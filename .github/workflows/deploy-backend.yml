@@ -41,4 +41,5 @@ jobs:
             --stack-name cardio-backend \
             --capabilities CAPABILITY_IAM \
             --region us-east-1 \
+            --resolve-s3 \
             --resolve-image-repos
