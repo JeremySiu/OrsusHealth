@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Heart Disease Prediction API — FastAPI on Lambda
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  HeartDiseasePredictFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures:
+        - x86_64
+      Events:
+        RootApi:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: get
+        PredictApi:
+          Type: HttpApi
+          Properties:
+            Path: /predict
+            Method: post
+        # Catch-all for any other routes FastAPI handles
+        CatchAll:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: latest
+
+Outputs:
+  ApiUrl:
+    Description: URL of the deployed API
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  HeartDiseasePredictFunction:
+    Description: Lambda function ARN
+    Value: !GetAtt HeartDiseasePredictFunction.Arn
