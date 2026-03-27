@@ -1,0 +1,16 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /predict",
+  "rawPath": "/predict",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "requestContext": {
+    "http": {
+      "method": "POST",
+      "path": "/predict"
+    }
+  },
+  "body": "{\"Age\":40,\"Sex\":\"M\",\"ChestPainType\":\"ATA\",\"RestingBP\":140,\"Cholesterol\":289,\"FastingBS\":0,\"RestingECG\":\"Normal\",\"MaxHR\":172,\"ExerciseAngina\":\"N\",\"Oldpeak\":0.0,\"ST_Slope\":\"Up\"}",
+  "isBase64Encoded": false
+}
