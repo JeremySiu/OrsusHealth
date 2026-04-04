@@ -166,7 +166,7 @@ export default function HeartCanvas({ onPump }) {
       <ambientLight intensity={1} />
       <directionalLight position={[5, 10, 7]} intensity={1.8} />
       <directionalLight position={[-5, 5, -5]} intensity={0.6} />
-      <pointLight position={[0, 0, 5]} intensity={1} color="#cc4444" />
+      <pointLight position={[0, 0, 5]} intensity={1} color="#ffffffff" />
 
       <React.Suspense fallback={null}>
         <HeartModel onPump={onPump} />
