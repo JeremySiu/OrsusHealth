@@ -7,10 +7,10 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ''
-    Description: Gradium API key (set via GitHub secret GRADIUM_API_KEY or sam deploy --parameter-overrides)
+    Description: Gradium API key (set via GitHub secret GRADIUM_API_KEY)
   GradiumVoiceId:
     Type: String
-    Default: 'YTpq7expH9539ERJ'
+    Default: 'OceLYI_PPbqsdgdV'
   GradiumApiRegion:
     Type: String
     Default: 'us'
