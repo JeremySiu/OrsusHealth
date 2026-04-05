@@ -1,6 +1,10 @@
 __pycache__/
 .venv
 
+# Local secrets (use GitHub Actions secrets + SAM parameters for deploy)
+.env
+backend/.env
+
 # AWS SAM build artifacts
 .aws-sam/
 samconfig.toml

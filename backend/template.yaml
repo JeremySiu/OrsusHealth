@@ -2,9 +2,25 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Heart Disease Prediction API — FastAPI on Lambda
 
+Parameters:
+  GradiumApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Gradium API key (set via GitHub secret GRADIUM_API_KEY or sam deploy --parameter-overrides)
+  GradiumVoiceId:
+    Type: String
+    Default: 'YTpq7expH9539ERJ'
+  GradiumApiRegion:
+    Type: String
+    Default: 'us'
+    AllowedValues:
+      - us
+      - eu
+
 Globals:
   Function:
-    Timeout: 30
+    Timeout: 90
     MemorySize: 512
 
 Resources:
@@ -14,6 +30,11 @@ Resources:
       PackageType: Image
       Architectures:
         - x86_64
+      Environment:
+        Variables:
+          GRADIUM_API_KEY: !Ref GradiumApiKey
+          GRADIUM_VOICE_ID: !Ref GradiumVoiceId
+          GRADIUM_API_REGION: !Ref GradiumApiRegion
       Events:
         RootApi:
           Type: HttpApi
