@@ -34,7 +34,8 @@ jobs:
         working-directory: backend
         run: sam build
 
-      # Repository secrets: GRADIUM_API_KEY (required for /tts). Optional GRADIUM_VOICE_ID, GRADIUM_API_REGION (us|eu).
+      # GRADIUM_API_KEY required. Optional GRADIUM_VOICE_ID / GRADIUM_API_REGION — if VOICE_ID secret is unset, the
+      # default here MUST match template.yaml GradiumVoiceId (deploy always passes parameter-overrides).
       - name: Deploy to AWS
         working-directory: backend
         env:
@@ -48,4 +49,4 @@ jobs:
             --region us-east-1 \
             --resolve-s3 \
             --resolve-image-repos \
-            --parameter-overrides "GradiumApiKey=${GRADIUM_API_KEY} GradiumVoiceId=${GRADIUM_VOICE_ID:-YTpq7expH9539ERJ} GradiumApiRegion=${GRADIUM_API_REGION:-us}"
+            --parameter-overrides "GradiumApiKey=${GRADIUM_API_KEY} GradiumVoiceId=${GRADIUM_VOICE_ID:-OceLYI_PPbqsdgdV} GradiumApiRegion=${GRADIUM_API_REGION:-us}"

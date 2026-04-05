@@ -58,11 +58,15 @@ async def text_to_speech(body: TtsRequest):
             detail="GRADIUM_API_KEY is not configured on the server.",
         )
 
-    region = (os.getenv("GRADIUM_API_REGION") or "us").lower()
+    region = (os.getenv("GRADIUM_API_REGION") or "us").lower().strip()
     base = GRADIUM_BASES.get(region, GRADIUM_BASES["us"])
     url = f"{base}/post/speech/tts"
 
-    voice_id = body.voice_id or os.getenv("GRADIUM_VOICE_ID") or "YTpq7expH9539ERJ"
+    voice_id = (
+        (body.voice_id or "").strip()
+        or (os.getenv("GRADIUM_VOICE_ID") or "").strip()
+        or "OceLYI_PPbqsdgdV"
+    )
 
     payload = {
         "text": body.text,
