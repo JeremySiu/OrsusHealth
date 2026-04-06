@@ -94,5 +94,5 @@ async def text_to_speech(body: TtsRequest):
             detail=r.text or "TTS provider returned an error",
         )
 
-    ct = r.headers.get("content-type", "audio/wav")
-    return Response(content=r.content, media_type=ct)
+    # Always label as WAV so clients and API Gateway/Lambda treat the body as binary audio.
+    return Response(content=r.content, media_type="audio/wav")
