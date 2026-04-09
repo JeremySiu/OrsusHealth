@@ -5,6 +5,8 @@ import Grainient from '../components/Grainient';
 import { DashboardAppSidebar } from '../components/DashboardAppSidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '../components/ui/sidebar';
 import { TooltipProvider } from '../components/ui/tooltip';
+import { DashboardStats } from '../components/DashboardStats';
+import AssessmentForm from '../components/AssessmentForm';
 
 const DASHBOARD_GRAIN = {
   color1: '#e2e8f0',
@@ -39,15 +41,15 @@ function Dashboard() {
   const [speechEnded, setSpeechEnded] = useState(false);
   /** True only while TTS audio is actually playing (after fetch + play() succeed). */
   const [speechAudioPlaying, setSpeechAudioPlaying] = useState(false);
-  const [stopGif, setStopGif] = useState(false);
   const [ttsText, setTtsText] = useState(
     "Hello! Welcome to your dashboard. I'm glad you're here.",
   );
   /** Bumped when TTS audio starts so mustache.gif restarts in sync with speech. */
   const [talkCycle, setTalkCycle] = useState(0);
+  const bearContainerRef = useRef(null);
+  const [bearWidth, setBearWidth] = useState(350);
   const videoRef = useRef(null);
   const gifRef = useRef(null);
-  const canvasRef = useRef(null);
   const audioRef = useRef(null);
   const triggerTtsPlayRef = useRef(null);
   const ttsTextRef = useRef(ttsText);
@@ -56,7 +58,6 @@ function Dashboard() {
   /** One deliberate tap: browsers allow audio only from a user gesture; TTS returns async so we play on tap after the file is ready. */
   const [soundUnlocked, setSoundUnlocked] = useState(false);
   const [ttsGateReady, setTtsGateReady] = useState(false);
-  const [needsManualTtsPlay, setNeedsManualTtsPlay] = useState(false);
 
   const getTabTitle = (id) => {
     switch (id) {
@@ -88,6 +89,27 @@ function Dashboard() {
     b.src = '/idle.gif';
   }, []);
 
+  // Track the size of the Bear container to subtract exactly its pixel width dynamically
+  useEffect(() => {
+    if (!bearContainerRef.current) return;
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          // Add a tiny buffer (e.g. 16px) so it doesn't touch exactly the edge of the bear
+          setBearWidth(entry.contentRect.width + 16); 
+        }
+      }
+    });
+    
+    resizeObserver.observe(bearContainerRef.current);
+    if (bearContainerRef.current.offsetWidth) {
+      setBearWidth(bearContainerRef.current.offsetWidth + 16);
+    }
+    
+    return () => resizeObserver.disconnect();
+  }, []);
+
   // Fetch TTS on load; playback starts only after the user taps the overlay (gesture + audio ready).
   useEffect(() => {
     if (loading || !user) return;
@@ -102,7 +124,6 @@ function Dashboard() {
     let pollId = null;
 
     setTtsGateReady(false);
-    setNeedsManualTtsPlay(false);
     triggerTtsPlayRef.current = null;
 
     /** Detach media from the blob before revoking, or the browser may log ERR_FILE_NOT_FOUND. */
@@ -208,16 +229,11 @@ function Dashboard() {
           try {
             await audio.play();
             if (!cancelled) {
-              setNeedsManualTtsPlay(false);
               markPlayStarted();
             }
           } catch (e) {
-            if (e?.name === 'NotAllowedError' && !cancelled && !finished) {
-              setNeedsManualTtsPlay(true);
-            } else {
-              console.warn('TTS: audio.play() failed:', e);
-              finish();
-            }
+            console.warn('TTS: audio.play() failed:', e);
+            finish();
           }
         };
 
@@ -240,7 +256,6 @@ function Dashboard() {
       if (pollId != null) window.clearInterval(pollId);
       triggerTtsPlayRef.current = null;
       setSpeechAudioPlaying(false);
-      setNeedsManualTtsPlay(false);
       setTtsGateReady(false);
       revokeBlobUrl();
     };
@@ -257,34 +272,9 @@ function Dashboard() {
     videoRef.current?.play?.().catch(() => {});
   }, [ttsGateReady]);
 
-  const retryTtsFromClick = useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    void a
-      .play()
-      .then(() => {
-        setNeedsManualTtsPlay(false);
-        setTalkCycle((n) => n + 1);
-        setSpeechAudioPlaying(true);
-      })
-      .catch(() => {});
-  }, []);
-
   const handleVideoEnd = useCallback(() => {
     setIntroFinished(true);
   }, []);
-
-  // Freeze the GIF by capturing current frame to a canvas
-  useEffect(() => {
-    if (stopGif && gifRef.current && canvasRef.current) {
-      const img = gifRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-    }
-  }, [stopGif]);
 
   if (loading) {
     return (
@@ -364,25 +354,16 @@ function Dashboard() {
               </header>
 
               <section
-                className={`min-h-0 flex-1 ${
-                  activeTabId === 'overview'
-                    ? 'overflow-hidden'
-                    : 'overflow-y-auto p-6 md:p-8'
-                }`}
-                style={
-                  activeTabId === 'overview'
-                    ? {
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'stretch',
-                        justifyContent: 'flex-start',
-                        padding: 0,
-                        minHeight: 0,
-                      }
-                    : {}
-                }
+                className="min-h-0 flex-1 overflow-hidden"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  justifyContent: 'flex-start',
+                  padding: 0,
+                  minHeight: 0,
+                }}
               >
-                {activeTabId === 'overview' ? (
                   <div className="flex min-h-0 w-full flex-1 flex-col">
                     <div
                       className="relative flex min-h-0 flex-1 flex-col items-center justify-center"
@@ -410,18 +391,39 @@ function Dashboard() {
                             Get Started
                           </button>
                         </div>
-                      ) : soundUnlocked && needsManualTtsPlay ? (
-                        <button
-                          type="button"
-                          onClick={retryTtsFromClick}
-                          className="absolute left-1/2 top-1/2 z-[60] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-black/10 bg-white/95 px-4 py-2.5 text-sm font-medium text-zinc-900 shadow-md outline-none ring-zinc-400/30 hover:bg-white focus-visible:ring-2"
-                        >
-                          Play voice
-                        </button>
                       ) : null}
-                      {!stopGif ? (
-                        <div
-                          style={{
+
+                      {/* CONTENT CONTAINER (Fades in on the left side) */}
+                      <div 
+                        className="absolute left-0 top-0 h-full flex flex-col justify-center transition-all duration-1000"
+                        style={{
+                          width: soundUnlocked ? `calc(100% - ${bearWidth}px)` : '0%', 
+                          opacity: soundUnlocked ? 1 : 0,
+                          pointerEvents: soundUnlocked ? 'auto' : 'none',
+                          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                      >
+                        {soundUnlocked && activeTabId === 'overview' && <DashboardStats user={user} />}
+                        {soundUnlocked && activeTabId === 'assessment' && <AssessmentForm />}
+                        {soundUnlocked && activeTabId !== 'overview' && activeTabId !== 'assessment' && (
+                          <div className="h-full w-full overflow-y-auto flex flex-col justify-center p-6 md:p-8 rounded-xl">
+                            <h2
+                              className="text-lg font-semibold tracking-tight text-zinc-900"
+                              style={{ fontFamily: 'var(--font-heading)' }}
+                            >
+                              {getTabTitle(activeTabId)}
+                            </h2>
+                            <p className="mt-1 text-sm text-zinc-600">
+                              Content for {getTabTitle(activeTabId)} coming soon.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* DR BEAR ANIMATION CONTAINER */}
+                      <div
+                        ref={bearContainerRef}
+                        style={{
                             position: 'absolute',
                             top: 0,
                             left: soundUnlocked ? '100%' : '50%',
@@ -500,33 +502,8 @@ function Dashboard() {
                             }}
                           />
                         </div>
-                      ) : (
-                        <canvas
-                          ref={canvasRef}
-                          style={{
-                            height: '100%',
-                            maxWidth: '100%',
-                            objectFit: 'contain',
-                            display: 'block',
-                            backgroundColor: '#transparent',
-                          }}
-                        />
-                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="rounded-xl">
-                    <h2
-                      className="text-lg font-semibold tracking-tight text-zinc-900"
-                      style={{ fontFamily: 'var(--font-heading)' }}
-                    >
-                      {getTabTitle(activeTabId)}
-                    </h2>
-                    <p className="mt-1 text-sm text-zinc-600">
-                      Content for {getTabTitle(activeTabId)} coming soon.
-                    </p>
-                  </div>
-                )}
               </section>
             </div>
           </SidebarInset>
