@@ -7,12 +7,12 @@ export const getClinicalFacts = (featureName, isPositive) => {
       true: {
         fact: "Advanced age correlates with progressive stiffening of arterial walls, increasing cardiovascular resistance.",
         suggestion: "Keep up with routine medical screenings and maintain a diet rich in antioxidants.",
-        citation: "AHA Guidelines on Aging & Cardiovascular Disease"
+        citation: "CCS Guidelines on Aging & Cardiovascular Disease"
       },
       false: {
         fact: "Younger chronological age generally reflects more elastic and compliant blood vessels.",
         suggestion: "Build long-term cardiovascular resilience by establishing sustainable physical exercise routines now.",
-        citation: "ACC Primary Prevention Guidelines"
+        citation: "CCS Primary Prevention Guidelines"
       }
     },
     'Sex': {
@@ -44,24 +44,24 @@ export const getClinicalFacts = (featureName, isPositive) => {
       true: {
         fact: "High serum cholesterol (specifically LDL) creates atherosclerotic plaques that narrow arteries and restrict vital blood flow.",
         suggestion: "Substitute saturated animal fats with plant-based alternatives and consider a statin consultation if levels remain high.",
-        citation: "AHA Guidelines on Blood Cholesterol"
+        citation: "CCS Dyslipidemia Guidelines"
       },
       false: {
         fact: "Healthy lipid profiles allow smooth, unrestricted blood flow to the myocardium (heart muscle).",
         suggestion: "Continue a diet high in fiber and omega-3 fatty acids to sustain this profile.",
-        citation: "AHA Guidelines on Blood Cholesterol"
+        citation: "CCS Dyslipidemia Guidelines"
       }
     },
     'FastingBS': {
       true: {
         fact: "Elevated fasting blood sugar causes endothelial dysfunction through advanced glycation, fundamentally damaging blood vessel linings.",
         suggestion: "Regulate carbohydrate intake and maintain metabolic sensitivity through daily cardiovascular activity.",
-        citation: "ADA/AHA Joint Statement on Diabetes and Cardiovascular Disease"
+        citation: "Diabetes Canada Clinical Practice Guidelines"
       },
       false: {
         fact: "Normal metabolic glucose processing protects the delicate endothelial lining from toxic sugar-related inflammatory damage.",
         suggestion: "Avoid sudden spikes in dietary glycemic load to preserve this metabolic health.",
-        citation: "AHA Scientific Statement on Insulin Resistance"
+        citation: "Diabetes Canada Clinical Practice Guidelines"
       }
     },
     'MaxHR': {

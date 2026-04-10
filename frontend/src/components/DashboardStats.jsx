@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 const MOCK_ASSESSMENT = {
   Age: 45,
@@ -144,13 +144,31 @@ export function DashboardStats({ user }) {
           .from('health_records')
           .select('value')
           .eq('user_id', user.id)
-          .eq('record_type', 'assessment')
+          .eq('record_type', 'cardiovascular_assessment')
           .order('recorded_at', { ascending: false })
           .limit(1);
 
         if (error) throw error;
         if (records && records.length > 0) {
-          setData(records[0].value);
+          const record = records[0].value;
+          const form = record.form_data || {};
+          const prediction = record.prediction || {};
+
+          // Flatten into the shape the dashboard cards expect
+          setData({
+            Age: form.Age,
+            Sex: form.Sex,
+            RestingBP: form.RestingBP,
+            Cholesterol: form.Cholesterol,
+            FastingBS: form.FastingBS ? 1 : 0,
+            MaxHR: form.MaxHR,
+            ChestPainType: form.ChestPainType,
+            RestingECG: form.RestingECG,
+            ExerciseAngina: form.ExerciseAngina,
+            Oldpeak: form.Oldpeak,
+            ST_Slope: form.ST_Slope,
+            HeartDisease: prediction.heart_disease_probability ?? null,
+          });
         } else {
           setData(null);
         }

@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '../components/ui/
 import { TooltipProvider } from '../components/ui/tooltip';
 import { DashboardStats } from '../components/DashboardStats';
 import AssessmentForm from '../components/AssessmentForm';
+import MyReports from '../components/MyReports';
 
 const DASHBOARD_GRAIN = {
   color1: '#e2e8f0',
@@ -405,7 +406,8 @@ function Dashboard() {
                       >
                         {soundUnlocked && activeTabId === 'overview' && <DashboardStats user={user} />}
                         {soundUnlocked && activeTabId === 'assessment' && <AssessmentForm />}
-                        {soundUnlocked && activeTabId !== 'overview' && activeTabId !== 'assessment' && (
+                        {soundUnlocked && activeTabId === 'reports' && <MyReports />}
+                        {soundUnlocked && activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'reports' && (
                           <div className="h-full w-full overflow-y-auto flex flex-col justify-center p-6 md:p-8 rounded-xl">
                             <h2
                               className="text-lg font-semibold tracking-tight text-zinc-900"
