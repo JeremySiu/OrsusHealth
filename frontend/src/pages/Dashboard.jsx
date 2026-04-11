@@ -42,9 +42,8 @@ function Dashboard() {
   const [speechEnded, setSpeechEnded] = useState(false);
   /** True only while TTS audio is actually playing (after fetch + play() succeed). */
   const [speechAudioPlaying, setSpeechAudioPlaying] = useState(false);
-  const [ttsText, setTtsText] = useState(
-    "Hello! Welcome to your dashboard. I'm glad you're here.",
-  );
+  const [displayName, setDisplayName] = useState('User');
+  const [ttsText, setTtsText] = useState('');
   /** Bumped when TTS audio starts so mustache.gif restarts in sync with speech. */
   const [talkCycle, setTalkCycle] = useState(0);
   const bearContainerRef = useRef(null);
@@ -76,6 +75,19 @@ function Dashboard() {
       navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
+
+  // Set display name and TTS greeting text once user data is loaded
+  useEffect(() => {
+    if (user) {
+      const name =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email ||
+        '';
+      setDisplayName(name);
+      setTtsText(`Hello ${name}! Welcome to OrsusHealth. How can I help you today?`);
+    }
+  }, [user]);
 
   useEffect(() => {
     document.body.classList.add('dashboard-route');
@@ -291,11 +303,6 @@ function Dashboard() {
     introFinished && (speechEnded || !speechAudioPlaying);
   const showMustacheTalking = !speechEnded && speechAudioPlaying;
 
-  const displayName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email ||
-    'User';
   const avatarUrl =
     user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
@@ -371,7 +378,7 @@ function Dashboard() {
                       style={{ minHeight: 0 }}
                     >
                       {introFinished && !soundUnlocked ? (
-                        <div className="absolute left-1/2 bottom-12 z-[60] -translate-x-1/2 flex flex-col items-center justify-center">
+                        <div className="absolute left-1/2 z-[60] -translate-x-1/2 flex flex-col items-center justify-center" style={{ bottom: '2rem' }}>
                           <style>
                             {`
                               @keyframes subtle-bounce {
@@ -387,7 +394,8 @@ function Dashboard() {
                             type="button"
                             disabled={!ttsGateReady}
                             onClick={unlockDashboardSound}
-                            className="hover-bounce-effect rounded-full bg-gradient-to-b from-[#14b8a6] to-[#0f766e] px-24 py-10 text-center text-2xl font-semibold tracking-wide text-white shadow-[0_8px_24px_rgba(20,184,166,0.3)] transition-all outline-none focus-visible:ring-2 ring-teal-500/50 disabled:cursor-wait disabled:opacity-70 hover:shadow-[0_12px_32px_rgba(20,184,166,0.5)]"
+                            className="hover-bounce-effect rounded-full bg-gradient-to-b from-[#14b8a6] to-[#0f766e] px-24 py-10 text-center text-2xl font-semibold tracking-wide text-white shadow-[0_8px_24px_rgba(20,184,166,0.3)] transition-all outline-none focus-visible:ring-2 ring-teal-500/50 disabled:cursor-wait disabled:opacity-70 hover:shadow-[0_12px_32px_rgba(20,184,166,0.5)]" 
+                            style={{padding: '1rem'}}
                           >
                             Get Started
                           </button>

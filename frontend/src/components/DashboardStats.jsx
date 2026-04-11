@@ -8,23 +8,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
-const USE_MOCK_DATA = false;
-
-const MOCK_ASSESSMENT = {
-  Age: 45,
-  Sex: 'M',
-  ChestPainType: 'ATA',
-  RestingBP: 124,
-  Cholesterol: 198,
-  FastingBS: 0,
-  RestingECG: 'Normal',
-  MaxHR: 160,
-  ExerciseAngina: 'N',
-  Oldpeak: 0.5,
-  ST_Slope: 'Up',
-  HeartDisease: 15 // Mock 15% risk
-};
-
 const STATS_MAP = {
   ChestPainType: {
     'TA': 'Typical Angina',
@@ -67,7 +50,7 @@ const CircularProgress = ({ value, label, size = 200, strokeWidth = 16 }) => {
   }
 
   return (
-    <div className="relative flex flex-col items-center justify-center" style={{ width: size, height: size }}>
+    <div className="relative flex flex-col items-center justify-center" style={{ width: size, height: size, marginTop: "0.5rem", marginBottom: "0.5rem" }}>
       <svg className="transform -rotate-90 w-full h-full drop-shadow-sm">
         <circle
           className={bgClass}
@@ -101,7 +84,7 @@ const CircularProgress = ({ value, label, size = 200, strokeWidth = 16 }) => {
             value > 60 ? 'bg-rose-100 text-rose-700' : 
             value > 30 ? 'bg-amber-100 text-amber-700' : 
             'bg-teal-100 text-teal-700'
-          }`}>
+          }`} style={{ padding: "0.5rem", marginTop: "0.25rem"}}>
             {statusText}
           </Badge>
         )}
@@ -113,10 +96,10 @@ const CircularProgress = ({ value, label, size = 200, strokeWidth = 16 }) => {
 const StatItem = ({ icon: Icon, label, value, subtext }) => (
   <div className="flex items-center gap-3 p-3 rounded-lg bg-white/40 border border-white/60 shadow-sm transition-all hover:bg-white/60">
     <div className="p-2 text-zinc-600">
-      <Icon size={20} />
+      <Icon size={20} style={{ marginLeft: "0.5rem" }} />
     </div>
     <div className="flex flex-col">
-      <span className="text-[13px] font-medium text-zinc-500 uppercase tracking-winder">{label}</span>
+      <span className="text-[13px] font-medium text-zinc-500 uppercase tracking-winder" style={{ marginTop: "0.25rem" }}>{label}</span>
       <div className="flex items-baseline gap-1">
         <span className="text-lg font-semibold text-zinc-800">{value ?? 'N/A'}</span>
         {subtext && value != null && <span className="text-xs font-medium text-zinc-500">{subtext}</span>}
@@ -131,14 +114,6 @@ export function DashboardStats({ user }) {
 
   useEffect(() => {
     async function fetchStats() {
-      if (USE_MOCK_DATA) {
-        setTimeout(() => {
-          setData(MOCK_ASSESSMENT);
-          setLoading(false);
-        }, 500);
-        return;
-      }
-
       try {
         const { data: records, error } = await supabase
           .from('health_records')
@@ -201,12 +176,12 @@ export function DashboardStats({ user }) {
         
         {/* HERO SECTION */}
         <div className="flex flex-col gap-4">
-          <Card className="bg-white/40 backdrop-blur-xl border-white/50 shadow-xl overflow-hidden rounded-2xl">
+          <Card className="bg-white/40 backdrop-blur-xl border-white/50 shadow-xl overflow-hidden rounded-2xl" style={{ marginLeft: "0.5rem", marginTop: "0.5rem" }}>
             {/* Top Profile Strip */}
             <div className="bg-gradient-to-r from-zinc-50/80 via-white/50 to-zinc-50/30 px-6 py-5 flex items-center justify-between border-b border-white/40">
               <div className="flex items-center gap-3">
                 <div className="p-2 text-zinc-500">
-                  <User size={20} />
+                  <User size={20} style={{ marginLeft: "0.5rem" }}/>
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg tracking-tight text-zinc-800" style={{ fontFamily: 'var(--font-heading)' }}>{displayName}</h3>
@@ -237,11 +212,11 @@ export function DashboardStats({ user }) {
         {/* VITALS & CLINICAL SECTION */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card 1: Vitals */}
-          <Card className="bg-white/40 backdrop-blur-xl border-white/50 shadow-md">
+          <Card className="bg-white/40 backdrop-blur-xl border-white/50 shadow-md" style={{ marginLeft: "0.5rem" }}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold text-zinc-800" style={{ fontFamily: 'var(--font-heading)' }}>Vitals Overview</CardTitle>
+              <CardTitle className="text-lg font-semibold text-zinc-800" style={{ fontFamily: 'var(--font-heading)', marginLeft: "0.5rem", marginTop: "0.5rem" }}>Vitals Overview</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ margin: "0.5rem", marginTop: 0 }}>
               <StatItem 
                 icon={Heart} 
                 label="Resting BP" 
@@ -272,9 +247,9 @@ export function DashboardStats({ user }) {
           {/* Card 2: Clinical */}
           <Card className="bg-white/40 backdrop-blur-xl border-white/50 shadow-md">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold text-zinc-800" style={{ fontFamily: 'var(--font-heading)' }}>Clinical Indicators</CardTitle>
+              <CardTitle className="text-lg font-semibold text-zinc-800" style={{ fontFamily: 'var(--font-heading)', marginLeft: "0.5rem", marginTop: "0.5rem" }}>Clinical Indicators</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3">
+            <CardContent className="flex flex-col gap-3" style={{ margin: "0.5rem", marginTop: 0 }}>
               <StatItem 
                 icon={Stethoscope} 
                 label="Chest Pain Type" 
