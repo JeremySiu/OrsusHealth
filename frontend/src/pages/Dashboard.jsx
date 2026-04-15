@@ -1,13 +1,15 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import Grainient from '../components/Grainient';
+import Grainient from '../components/react-bits/Grainient';
+import GlassSurface from '../components/react-bits/GlassSurface';
 import { DashboardAppSidebar } from '../components/DashboardAppSidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '../components/ui/sidebar';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { DashboardStats } from '../components/DashboardStats';
 import AssessmentForm from '../components/AssessmentForm';
 import MyReports from '../components/MyReports';
+import { useIsMobile } from '../hooks/use-mobile';
 
 const DASHBOARD_GRAIN = {
   color1: '#e2e8f0',
@@ -58,6 +60,8 @@ function Dashboard() {
   /** One deliberate tap: browsers allow audio only from a user gesture; TTS returns async so we play on tap after the file is ready. */
   const [soundUnlocked, setSoundUnlocked] = useState(false);
   const [ttsGateReady, setTtsGateReady] = useState(false);
+  const isMobile = useIsMobile();
+  const [showBearOnlyMobile, setShowBearOnlyMobile] = useState(false);
 
   const getTabTitle = (id) => {
     switch (id) {
@@ -278,6 +282,21 @@ function Dashboard() {
     setSoundUnlocked(false);
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!isMobile) {
+      setShowBearOnlyMobile(false);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!soundUnlocked) {
+      setShowBearOnlyMobile(true);
+    } else {
+      setShowBearOnlyMobile(false);
+    }
+  }, [isMobile, soundUnlocked]);
+
   const unlockDashboardSound = useCallback(() => {
     if (!ttsGateReady) return;
     triggerTtsPlayRef.current?.();
@@ -302,6 +321,30 @@ function Dashboard() {
   const showIdleUnderBear =
     introFinished && (speechEnded || !speechAudioPlaying);
   const showMustacheTalking = !speechEnded && speechAudioPlaying;
+  const showMobileBearToggle = isMobile;
+  const showContentPanel = soundUnlocked && (!isMobile || !showBearOnlyMobile);
+  const contentPanelWidth = !soundUnlocked
+    ? '0%'
+    : isMobile
+      ? showBearOnlyMobile
+        ? '0%'
+        : '100%'
+      : `calc(100% - ${bearWidth}px)`;
+  const isBearHiddenOnMobile = isMobile && soundUnlocked && !showBearOnlyMobile;
+  const bearContainerLeft = !soundUnlocked
+    ? '50%'
+    : isMobile
+      ? showBearOnlyMobile
+        ? '50%'
+        : '100%'
+      : '100%';
+  const bearContainerTransform = !soundUnlocked
+    ? 'translateX(-50%)'
+    : isMobile
+      ? showBearOnlyMobile
+        ? 'translateX(-50%)'
+        : 'translateX(0)'
+      : 'translateX(-100%)';
 
   const avatarUrl =
     user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
@@ -338,19 +381,31 @@ function Dashboard() {
             className="flex min-h-0 flex-1 flex-col bg-transparent"
             style={{ padding: '0.5rem', backgroundColor: 'transparent' }}
           >
-            <div 
-              className="flex size-full flex-col overflow-hidden rounded-2xl"
-              style={{
-                backgroundColor: 'rgba(220, 226, 235, 0.28)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255, 255, 255, 0.35)',
-                boxShadow: '0 20px 50px -10px rgba(0, 0, 0, 0.25), 0 8px 24px -4px rgba(0, 0, 0, 0.1)'
-              }}
+            <GlassSurface
+              width="100%"
+              height="100%"
+              borderRadius={16}
+              blur={26}
+              backgroundOpacity={0.28}
+              className="flex size-full min-h-0 flex-col overflow-hidden rounded-2xl !items-stretch !justify-start"
+              contentClassName="!h-full !min-h-0 !flex-col !items-stretch !justify-start !p-0"
             >
-              <header className="flex h-14 shrink-0 items-center gap-2 border-b border-black/5 px-4 md:px-5">
+              <header className="dashboard-mobile-header relative flex h-14 shrink-0 items-center gap-2 border-b border-black/5 px-4 md:px-5">
+                <style>
+                  {`
+                    @property --ai-rot {
+                      syntax: '<angle>';
+                      inherits: false;
+                      initial-value: 0deg;
+                    }
+                    @keyframes ai-border-rotate {
+                      from { --ai-rot: 0deg; }
+                      to { --ai-rot: 360deg; }
+                    }
+                  `}
+                </style>
                 <div className="flex items-center gap-2">
-                  <SidebarTrigger className="-ml-1 text-sidebar-foreground hover:bg-black/5 rounded-md p-1.5" />
+                  <SidebarTrigger className="ml-0 text-sidebar-foreground hover:bg-black/5 rounded-md p-1.5 md:-ml-1" />
                   <div className="mx-2 h-4 w-px bg-black/10" aria-hidden="true" />
                   <span 
                     className="text-[16px] font-semibold text-zinc-800 tracking-tight"
@@ -359,6 +414,35 @@ function Dashboard() {
                     {getTabTitle(activeTabId)}
                   </span>
                 </div>
+                {showMobileBearToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowBearOnlyMobile((prev) => !prev)}
+                    disabled={!soundUnlocked}
+                    className="dashboard-mobile-bear-toggle inline-flex aspect-square items-center justify-center overflow-hidden rounded-full pt-[10%] pr-[16%] pb-[24%] pl-[16%] backdrop-blur lg:hidden"
+                    aria-label={soundUnlocked ? (showBearOnlyMobile ? 'Return to dashboard content' : 'Show Dr. Bear view') : 'Unlock dashboard to toggle Dr. Bear view'}
+                    style={{
+                      position: 'absolute',
+                      right: 'clamp(0.35rem, 1.2vw, 0.9rem)',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      height: 'calc(100% - clamp(0.45rem, 1.2vh, 0.8rem))',
+                      border: '2px solid transparent',
+                      '--ai-rot': '0deg',
+                      background:
+                        'linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)) padding-box, conic-gradient(from var(--ai-rot), rgba(59,130,246,0.95), rgba(99,102,241,0.95), rgba(79,70,229,0.95), rgba(67,56,202,0.95), rgba(59,130,246,0.95)) border-box',
+                      animation: 'ai-border-rotate 9s linear infinite',
+                      boxShadow:
+                        '0 0 0.85rem rgba(59,130,246,0.24), 0 0 1.15rem rgba(99,102,241,0.2), 0 0 1.35rem rgba(79,70,229,0.18)',
+                    }}
+                  >
+                    <img
+                      src="/BooHooLogo.png"
+                      alt=""
+                      className="h-full w-auto object-contain drop-shadow-[0_0_0.35rem_rgba(255,255,255,0.8)]"
+                    />
+                  </button>
+                ) : null}
               </header>
 
               <section
@@ -406,16 +490,17 @@ function Dashboard() {
                       <div 
                         className="absolute left-0 top-0 h-full flex flex-col justify-center transition-all duration-1000"
                         style={{
-                          width: soundUnlocked ? `calc(100% - ${bearWidth}px)` : '0%', 
-                          opacity: soundUnlocked ? 1 : 0,
-                          pointerEvents: soundUnlocked ? 'auto' : 'none',
+                          width: contentPanelWidth,
+                          opacity: showContentPanel ? 1 : 0,
+                          pointerEvents: showContentPanel ? 'auto' : 'none',
+                          overflow: 'hidden',
                           transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)'
                         }}
                       >
-                        {soundUnlocked && activeTabId === 'overview' && <DashboardStats user={user} />}
-                        {soundUnlocked && activeTabId === 'assessment' && <AssessmentForm />}
-                        {soundUnlocked && activeTabId === 'reports' && <MyReports />}
-                        {soundUnlocked && activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'reports' && (
+                        {showContentPanel && activeTabId === 'overview' && <DashboardStats user={user} />}
+                        {showContentPanel && activeTabId === 'assessment' && <AssessmentForm />}
+                        {showContentPanel && activeTabId === 'reports' && <MyReports />}
+                        {showContentPanel && activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'reports' && (
                           <div className="h-full w-full overflow-y-auto flex flex-col justify-center p-6 md:p-8 rounded-xl">
                             <h2
                               className="text-lg font-semibold tracking-tight text-zinc-900"
@@ -433,11 +518,12 @@ function Dashboard() {
                       {/* DR BEAR ANIMATION CONTAINER */}
                       <div
                         ref={bearContainerRef}
+                        className="dashboard-bear-shell"
                         style={{
                             position: 'absolute',
                             top: 0,
-                            left: soundUnlocked ? '100%' : '50%',
-                            transform: soundUnlocked ? 'translateX(-100%)' : 'translateX(-50%)',
+                            left: bearContainerLeft,
+                            transform: bearContainerTransform,
                             transition: 'left 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1)',
                             display: 'inline-block',
                             height: '100%',
@@ -447,6 +533,8 @@ function Dashboard() {
                             borderRadius: '32px',
                             overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+                            opacity: isBearHiddenOnMobile ? 0 : 1,
+                            pointerEvents: isBearHiddenOnMobile ? 'none' : 'auto',
                           }}
                         >
                           {/* Stacked layers: intro.webm on top until it ends; mustache only while TTS plays; idle after intro when not talking. */}
@@ -515,7 +603,7 @@ function Dashboard() {
                     </div>
                   </div>
               </section>
-            </div>
+            </GlassSurface>
           </SidebarInset>
         </TooltipProvider>
       </SidebarProvider>

@@ -94,12 +94,35 @@ body.dashboard-route {
   max-height: 100dvh;
   background: #e8ebf0;
   color: #18181b;
+  /* Softer nav tab hover/active vs global sidebar tokens */
+  --sidebar-accent: oklch(0.991 0.003 250);
+  --sidebar-accent-foreground: oklch(0.32 0.02 260);
+}
+
+body.dashboard-route [data-slot='sidebar-menu-button'][data-active='true'] {
+  font-weight: 400;
 }
 
 .dashboard-app .dashboard-grain {
   position: absolute;
   inset: 0;
   z-index: 0;
+}
+
+@media (max-width: 768px) {
+  .dashboard-mobile-header {
+    min-height: 3.5rem;
+    padding-top: max(0.4rem, env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .dashboard-mobile-bear-toggle {
+    flex-shrink: 0;
+  }
+
+  .dashboard-bear-shell {
+    border-radius: 24px !important;
+  }
 }
 
 /* ============================================

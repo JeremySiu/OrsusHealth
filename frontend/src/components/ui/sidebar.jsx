@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
+import GlassSurface from "@/components/react-bits/GlassSurface"
+
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
@@ -170,7 +172,17 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <GlassSurface
+            width="100%"
+            height="100%"
+            borderRadius={0}
+            blur={26}
+            backgroundOpacity={0.28}
+            className="flex h-full w-full min-h-0 !items-stretch !justify-start"
+            contentClassName="!h-full !min-h-0 !flex-col !items-stretch !justify-start !p-0"
+          >
+            {children}
+          </GlassSurface>
         </SheetContent>
       </Sheet>
     );
@@ -207,19 +219,19 @@ function Sidebar({
         )}
         style={variant === "floating" ? { padding: '0.5rem' } : {}}
         {...props}>
-        <div
+        <GlassSurface
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex size-full flex-col group-data-[variant=floating]:rounded-2xl"
-          style={{
-            backgroundColor: 'rgba(220, 226, 235, 0.28)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.35)',
-            boxShadow: '0 20px 50px -10px rgba(0, 0, 0, 0.25), 0 8px 24px -4px rgba(0, 0, 0, 0.1)'
-          }}>
+          width="100%"
+          height="100%"
+          borderRadius={variant === "floating" ? 16 : 0}
+          blur={26}
+          backgroundOpacity={0.28}
+          className="size-full min-h-0 !items-stretch !justify-start group-data-[variant=floating]:rounded-2xl"
+          contentClassName="!h-full !min-h-0 !flex-col !items-stretch !justify-start !p-0"
+        >
           {children}
-        </div>
+        </GlassSurface>
       </div>
     </div>
   );
