@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import HeartCanvas from '../components/HeartCanvas';
-import Grainient from '../components/Grainient';
+import Grainient from '../components/react-bits/Grainient';
 import LoadingScreen from '../components/LoadingScreen';
 import TextType from '../components/TextType';
 import AnimatedContent from '../components/AnimatedContent';

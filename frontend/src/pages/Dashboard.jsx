@@ -1,10 +1,16 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import Grainient from '../components/Grainient';
+import { Send } from 'lucide-react';
+import Grainient from '../components/react-bits/Grainient';
+import GlassSurface from '../components/react-bits/GlassSurface';
 import { DashboardAppSidebar } from '../components/DashboardAppSidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '../components/ui/sidebar';
 import { TooltipProvider } from '../components/ui/tooltip';
+import { DashboardStats } from '../components/DashboardStats';
+import AssessmentForm from '../components/AssessmentForm';
+import MyReports from '../components/MyReports';
+import { useIsMobile } from '../hooks/use-mobile';
 
 const DASHBOARD_GRAIN = {
   color1: '#e2e8f0',
@@ -39,24 +45,29 @@ function Dashboard() {
   const [speechEnded, setSpeechEnded] = useState(false);
   /** True only while TTS audio is actually playing (after fetch + play() succeed). */
   const [speechAudioPlaying, setSpeechAudioPlaying] = useState(false);
-  const [stopGif, setStopGif] = useState(false);
-  const [ttsText, setTtsText] = useState(
-    "Hello! Welcome to your dashboard. I'm glad you're here.",
-  );
+  const [displayName, setDisplayName] = useState('User');
+  const [ttsText, setTtsText] = useState('');
   /** Bumped when TTS audio starts so mustache.gif restarts in sync with speech. */
   const [talkCycle, setTalkCycle] = useState(0);
+  const bearContainerRef = useRef(null);
+  const [bearWidth, setBearWidth] = useState(350);
   const videoRef = useRef(null);
   const gifRef = useRef(null);
-  const canvasRef = useRef(null);
   const audioRef = useRef(null);
   const triggerTtsPlayRef = useRef(null);
   const ttsTextRef = useRef(ttsText);
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef(null);
   ttsTextRef.current = ttsText;
 
   /** One deliberate tap: browsers allow audio only from a user gesture; TTS returns async so we play on tap after the file is ready. */
   const [soundUnlocked, setSoundUnlocked] = useState(false);
   const [ttsGateReady, setTtsGateReady] = useState(false);
-  const [needsManualTtsPlay, setNeedsManualTtsPlay] = useState(false);
+  const isMobile = useIsMobile();
+  const [showBearOnlyMobile, setShowBearOnlyMobile] = useState(false);
 
   const getTabTitle = (id) => {
     switch (id) {
@@ -75,6 +86,19 @@ function Dashboard() {
     }
   }, [user, loading, navigate]);
 
+  // Set display name and TTS greeting text once user data is loaded
+  useEffect(() => {
+    if (user) {
+      const name =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email ||
+        '';
+      setDisplayName(name);
+      setTtsText(`Hello ${name}! Welcome to OrsusHealth. How can I help you today?`);
+    }
+  }, [user]);
+
   useEffect(() => {
     document.body.classList.add('dashboard-route');
     return () => document.body.classList.remove('dashboard-route');
@@ -86,6 +110,27 @@ function Dashboard() {
     a.src = '/mustache.gif';
     const b = new Image();
     b.src = '/idle.gif';
+  }, []);
+
+  // Track the size of the Bear container to subtract exactly its pixel width dynamically
+  useEffect(() => {
+    if (!bearContainerRef.current) return;
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          // Add a tiny buffer (e.g. 16px) so it doesn't touch exactly the edge of the bear
+          setBearWidth(entry.contentRect.width + 16); 
+        }
+      }
+    });
+    
+    resizeObserver.observe(bearContainerRef.current);
+    if (bearContainerRef.current.offsetWidth) {
+      setBearWidth(bearContainerRef.current.offsetWidth + 16);
+    }
+    
+    return () => resizeObserver.disconnect();
   }, []);
 
   // Fetch TTS on load; playback starts only after the user taps the overlay (gesture + audio ready).
@@ -102,7 +147,6 @@ function Dashboard() {
     let pollId = null;
 
     setTtsGateReady(false);
-    setNeedsManualTtsPlay(false);
     triggerTtsPlayRef.current = null;
 
     /** Detach media from the blob before revoking, or the browser may log ERR_FILE_NOT_FOUND. */
@@ -208,16 +252,11 @@ function Dashboard() {
           try {
             await audio.play();
             if (!cancelled) {
-              setNeedsManualTtsPlay(false);
               markPlayStarted();
             }
           } catch (e) {
-            if (e?.name === 'NotAllowedError' && !cancelled && !finished) {
-              setNeedsManualTtsPlay(true);
-            } else {
-              console.warn('TTS: audio.play() failed:', e);
-              finish();
-            }
+            console.warn('TTS: audio.play() failed:', e);
+            finish();
           }
         };
 
@@ -240,7 +279,6 @@ function Dashboard() {
       if (pollId != null) window.clearInterval(pollId);
       triggerTtsPlayRef.current = null;
       setSpeechAudioPlaying(false);
-      setNeedsManualTtsPlay(false);
       setTtsGateReady(false);
       revokeBlobUrl();
     };
@@ -250,6 +288,21 @@ function Dashboard() {
     setSoundUnlocked(false);
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!isMobile) {
+      setShowBearOnlyMobile(false);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!soundUnlocked) {
+      setShowBearOnlyMobile(true);
+    } else {
+      setShowBearOnlyMobile(false);
+    }
+  }, [isMobile, soundUnlocked]);
+
   const unlockDashboardSound = useCallback(() => {
     if (!ttsGateReady) return;
     triggerTtsPlayRef.current?.();
@@ -257,34 +310,35 @@ function Dashboard() {
     videoRef.current?.play?.().catch(() => {});
   }, [ttsGateReady]);
 
-  const retryTtsFromClick = useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    void a
-      .play()
-      .then(() => {
-        setNeedsManualTtsPlay(false);
-        setTalkCycle((n) => n + 1);
-        setSpeechAudioPlaying(true);
-      })
-      .catch(() => {});
-  }, []);
-
   const handleVideoEnd = useCallback(() => {
     setIntroFinished(true);
   }, []);
 
-  // Freeze the GIF by capturing current frame to a canvas
+  // Auto-scroll chat to bottom when new messages arrive
   useEffect(() => {
-    if (stopGif && gifRef.current && canvasRef.current) {
-      const img = gifRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-    }
-  }, [stopGif]);
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleChatSend = useCallback(() => {
+    const text = chatInput.trim();
+    if (!text) return;
+    setChatMessages((prev) => [
+      ...prev,
+      { role: 'user', content: text, id: Date.now() },
+    ]);
+    setChatInput('');
+    // Placeholder bot response — swap with real API later
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: "Thanks for your message! I'm Dr. Bear 🐻 — your personal cardiac health assistant. This feature is coming soon!",
+          id: Date.now() + 1,
+        },
+      ]);
+    }, 900);
+  }, [chatInput]);
 
   if (loading) {
     return (
@@ -299,12 +353,31 @@ function Dashboard() {
   const showIdleUnderBear =
     introFinished && (speechEnded || !speechAudioPlaying);
   const showMustacheTalking = !speechEnded && speechAudioPlaying;
+  const showMobileBearToggle = isMobile;
+  const showContentPanel = soundUnlocked && (!isMobile || !showBearOnlyMobile);
+  const contentPanelWidth = !soundUnlocked
+    ? '0%'
+    : isMobile
+      ? showBearOnlyMobile
+        ? '0%'
+        : '100%'
+      : `calc(100% - ${bearWidth}px)`;
+  const isBearHiddenOnMobile = isMobile && soundUnlocked && !showBearOnlyMobile;
+  const bearContainerLeft = !soundUnlocked
+    ? '50%'
+    : isMobile
+      ? showBearOnlyMobile
+        ? '50%'
+        : '100%'
+      : '100%';
+  const bearContainerTransform = !soundUnlocked
+    ? 'translateX(-50%)'
+    : isMobile
+      ? showBearOnlyMobile
+        ? 'translateX(-50%)'
+        : 'translateX(0)'
+      : 'translateX(-100%)';
 
-  const displayName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email ||
-    'User';
   const avatarUrl =
     user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
@@ -340,19 +413,31 @@ function Dashboard() {
             className="flex min-h-0 flex-1 flex-col bg-transparent"
             style={{ padding: '0.5rem', backgroundColor: 'transparent' }}
           >
-            <div 
-              className="flex size-full flex-col overflow-hidden rounded-2xl"
-              style={{
-                backgroundColor: 'rgba(220, 226, 235, 0.28)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255, 255, 255, 0.35)',
-                boxShadow: '0 20px 50px -10px rgba(0, 0, 0, 0.25), 0 8px 24px -4px rgba(0, 0, 0, 0.1)'
-              }}
+            <GlassSurface
+              width="100%"
+              height="100%"
+              borderRadius={16}
+              blur={26}
+              backgroundOpacity={0.28}
+              className="flex size-full min-h-0 flex-col overflow-hidden rounded-2xl !items-stretch !justify-start"
+              contentClassName="!h-full !min-h-0 !flex-col !items-stretch !justify-start !p-0"
             >
-              <header className="flex h-14 shrink-0 items-center gap-2 border-b border-black/5 px-4 md:px-5">
+              <header className="dashboard-mobile-header relative flex h-14 shrink-0 items-center gap-2 border-b border-black/5 px-4 md:px-5">
+                <style>
+                  {`
+                    @property --ai-rot {
+                      syntax: '<angle>';
+                      inherits: false;
+                      initial-value: 0deg;
+                    }
+                    @keyframes ai-border-rotate {
+                      from { --ai-rot: 0deg; }
+                      to { --ai-rot: 360deg; }
+                    }
+                  `}
+                </style>
                 <div className="flex items-center gap-2">
-                  <SidebarTrigger className="-ml-1 text-sidebar-foreground hover:bg-black/5 rounded-md p-1.5" />
+                  <SidebarTrigger className="ml-0 text-sidebar-foreground hover:bg-black/5 rounded-md p-1.5 md:-ml-1" />
                   <div className="mx-2 h-4 w-px bg-black/10" aria-hidden="true" />
                   <span 
                     className="text-[16px] font-semibold text-zinc-800 tracking-tight"
@@ -361,35 +446,55 @@ function Dashboard() {
                     {getTabTitle(activeTabId)}
                   </span>
                 </div>
+                {showMobileBearToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowBearOnlyMobile((prev) => !prev)}
+                    disabled={!soundUnlocked}
+                    className="dashboard-mobile-bear-toggle inline-flex aspect-square items-center justify-center overflow-hidden rounded-full pt-[10%] pr-[16%] pb-[24%] pl-[16%] backdrop-blur lg:hidden"
+                    aria-label={soundUnlocked ? (showBearOnlyMobile ? 'Return to dashboard content' : 'Show Dr. Bear view') : 'Unlock dashboard to toggle Dr. Bear view'}
+                    style={{
+                      position: 'absolute',
+                      right: 'clamp(0.35rem, 1.2vw, 0.9rem)',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      height: 'calc(100% - clamp(0.45rem, 1.2vh, 0.8rem))',
+                      border: '2px solid transparent',
+                      '--ai-rot': '0deg',
+                      background:
+                        'linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)) padding-box, conic-gradient(from var(--ai-rot), rgba(59,130,246,0.95), rgba(99,102,241,0.95), rgba(79,70,229,0.95), rgba(67,56,202,0.95), rgba(59,130,246,0.95)) border-box',
+                      animation: 'ai-border-rotate 9s linear infinite',
+                      boxShadow:
+                        '0 0 0.85rem rgba(59,130,246,0.24), 0 0 1.15rem rgba(99,102,241,0.2), 0 0 1.35rem rgba(79,70,229,0.18)',
+                    }}
+                  >
+                    <img
+                      src="/BooHooLogo.png"
+                      alt=""
+                      className="h-full w-auto object-contain drop-shadow-[0_0_0.35rem_rgba(255,255,255,0.8)]"
+                    />
+                  </button>
+                ) : null}
               </header>
 
               <section
-                className={`min-h-0 flex-1 ${
-                  activeTabId === 'overview'
-                    ? 'overflow-hidden'
-                    : 'overflow-y-auto p-6 md:p-8'
-                }`}
-                style={
-                  activeTabId === 'overview'
-                    ? {
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'stretch',
-                        justifyContent: 'flex-start',
-                        padding: 0,
-                        minHeight: 0,
-                      }
-                    : {}
-                }
+                className="min-h-0 flex-1 overflow-hidden"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  justifyContent: 'flex-start',
+                  padding: 0,
+                  minHeight: 0,
+                }}
               >
-                {activeTabId === 'overview' ? (
                   <div className="flex min-h-0 w-full flex-1 flex-col">
                     <div
                       className="relative flex min-h-0 flex-1 flex-col items-center justify-center"
                       style={{ minHeight: 0 }}
                     >
                       {introFinished && !soundUnlocked ? (
-                        <div className="absolute left-1/2 bottom-12 z-[60] -translate-x-1/2 flex flex-col items-center justify-center">
+                        <div className="absolute left-1/2 z-[60] -translate-x-1/2 flex flex-col items-center justify-center" style={{ bottom: '2rem' }}>
                           <style>
                             {`
                               @keyframes subtle-bounce {
@@ -405,27 +510,52 @@ function Dashboard() {
                             type="button"
                             disabled={!ttsGateReady}
                             onClick={unlockDashboardSound}
-                            className="hover-bounce-effect rounded-full bg-gradient-to-b from-[#14b8a6] to-[#0f766e] px-24 py-10 text-center text-2xl font-semibold tracking-wide text-white shadow-[0_8px_24px_rgba(20,184,166,0.3)] transition-all outline-none focus-visible:ring-2 ring-teal-500/50 disabled:cursor-wait disabled:opacity-70 hover:shadow-[0_12px_32px_rgba(20,184,166,0.5)]"
+                            className="hover-bounce-effect rounded-full bg-gradient-to-b from-[#14b8a6] to-[#0f766e] px-24 py-10 text-center text-2xl font-semibold tracking-wide text-white shadow-[0_8px_24px_rgba(20,184,166,0.3)] transition-all outline-none focus-visible:ring-2 ring-teal-500/50 disabled:cursor-wait disabled:opacity-70 hover:shadow-[0_12px_32px_rgba(20,184,166,0.5)]" 
+                            style={{padding: '1rem'}}
                           >
                             Get Started
                           </button>
                         </div>
-                      ) : soundUnlocked && needsManualTtsPlay ? (
-                        <button
-                          type="button"
-                          onClick={retryTtsFromClick}
-                          className="absolute left-1/2 top-1/2 z-[60] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-black/10 bg-white/95 px-4 py-2.5 text-sm font-medium text-zinc-900 shadow-md outline-none ring-zinc-400/30 hover:bg-white focus-visible:ring-2"
-                        >
-                          Play voice
-                        </button>
                       ) : null}
-                      {!stopGif ? (
-                        <div
-                          style={{
+
+                      {/* CONTENT CONTAINER (Fades in on the left side) */}
+                      <div 
+                        className="absolute left-0 top-0 h-full flex flex-col justify-center transition-all duration-1000"
+                        style={{
+                          width: contentPanelWidth,
+                          opacity: showContentPanel ? 1 : 0,
+                          pointerEvents: showContentPanel ? 'auto' : 'none',
+                          overflow: 'hidden',
+                          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                      >
+                        {showContentPanel && activeTabId === 'overview' && <DashboardStats user={user} />}
+                        {showContentPanel && activeTabId === 'assessment' && <AssessmentForm />}
+                        {showContentPanel && activeTabId === 'reports' && <MyReports />}
+                        {showContentPanel && activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'reports' && (
+                          <div className="h-full w-full overflow-y-auto flex flex-col justify-center p-6 md:p-8 rounded-xl">
+                            <h2
+                              className="text-lg font-semibold tracking-tight text-zinc-900"
+                              style={{ fontFamily: 'var(--font-heading)' }}
+                            >
+                              {getTabTitle(activeTabId)}
+                            </h2>
+                            <p className="mt-1 text-sm text-zinc-600">
+                              Content for {getTabTitle(activeTabId)} coming soon.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* DR BEAR ANIMATION CONTAINER */}
+                      <div
+                        ref={bearContainerRef}
+                        className="dashboard-bear-shell"
+                        style={{
                             position: 'absolute',
                             top: 0,
-                            left: soundUnlocked ? '100%' : '50%',
-                            transform: soundUnlocked ? 'translateX(-100%)' : 'translateX(-50%)',
+                            left: bearContainerLeft,
+                            transform: bearContainerTransform,
                             transition: 'left 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1)',
                             display: 'inline-block',
                             height: '100%',
@@ -435,6 +565,8 @@ function Dashboard() {
                             borderRadius: '32px',
                             overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+                            opacity: isBearHiddenOnMobile ? 0 : 1,
+                            pointerEvents: isBearHiddenOnMobile ? 'none' : 'auto',
                           }}
                         >
                           {/* Stacked layers: intro.webm on top until it ends; mustache only while TTS plays; idle after intro when not talking. */}
@@ -494,41 +626,82 @@ function Dashboard() {
                               zIndex: 2,
                               transition: BEAR_MEDIA_TRANSITION,
                               opacity: introFinished ? 0 : 1,
+                              pointerEvents: introFinished ? 'none' : 'auto',
                               backgroundColor: 'transparent',
                               border: 'none',
                               outline: 'none',
                             }}
                           />
+
+                          {/* DR BEAR CHAT PANEL — overlaid on stomach area */}
+                          <div
+                            className="bear-chat-panel"
+                            style={{
+                              position: 'absolute',
+                              left: '50%',
+                              bottom: 0,
+                              transform: 'translateX(-50%)',
+                              width: '90%',
+                              height: '43%',
+                              zIndex: 10,
+                              opacity: soundUnlocked ? 1 : 0,
+                              pointerEvents: soundUnlocked ? 'auto' : 'none',
+                              transition: 'opacity 0.6s ease',
+                            }}
+                          >
+                            <div className="bear-chat-card">
+                              {/* Messages */}
+                              <div className="bear-chat-messages">
+                                {chatMessages.length === 0 && (
+                                  <div className="bear-chat-empty">
+                                    <p>Ask Dr. Bear anything about heart health!</p>
+                                  </div>
+                                )}
+                                {chatMessages.map((msg) => (
+                                  <div
+                                    key={msg.id}
+                                    className={`bear-chat-bubble ${
+                                      msg.role === 'user' ? 'bear-chat-bubble--user' : 'bear-chat-bubble--assistant'
+                                    }`}
+                                  >
+                                    {msg.content}
+                                  </div>
+                                ))}
+                                <div ref={chatEndRef} />
+                              </div>
+
+                              {/* Input bar */}
+                              <form
+                                className="bear-chat-input-bar"
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  handleChatSend();
+                                }}
+                              >
+                                <input
+                                  type="text"
+                                  className="bear-chat-input"
+                                  placeholder="Type a message…"
+                                  value={chatInput}
+                                  onChange={(e) => setChatInput(e.target.value)}
+                                  autoComplete="off"
+                                />
+                                <button
+                                  type="submit"
+                                  className="bear-chat-send-btn"
+                                  disabled={!chatInput.trim()}
+                                  aria-label="Send message"
+                                >
+                                  <Send className="size-4" />
+                                </button>
+                              </form>
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <canvas
-                          ref={canvasRef}
-                          style={{
-                            height: '100%',
-                            maxWidth: '100%',
-                            objectFit: 'contain',
-                            display: 'block',
-                            backgroundColor: '#transparent',
-                          }}
-                        />
-                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="rounded-xl">
-                    <h2
-                      className="text-lg font-semibold tracking-tight text-zinc-900"
-                      style={{ fontFamily: 'var(--font-heading)' }}
-                    >
-                      {getTabTitle(activeTabId)}
-                    </h2>
-                    <p className="mt-1 text-sm text-zinc-600">
-                      Content for {getTabTitle(activeTabId)} coming soon.
-                    </p>
-                  </div>
-                )}
               </section>
-            </div>
+            </GlassSurface>
           </SidebarInset>
         </TooltipProvider>
       </SidebarProvider>

@@ -65,25 +65,37 @@ export function DashboardAppSidebar({
 
   return (
     <Sidebar variant="floating" collapsible="offcanvas">
-      <SidebarHeader className="gap-0 border-b border-sidebar-border" style={{ paddingTop: '2rem', paddingBottom: '2rem', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
-        <div className="flex items-center gap-4">
+      <SidebarHeader
+        className="gap-0 border-b border-sidebar-border p-0"
+        style={{ paddingTop: '2rem', paddingBottom: '2rem', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
+      >
+        <div className="flex min-w-0 items-center gap-3">
           <img
             src="/BooHooLogo.png"
             alt=""
-            width={44}
-            height={44}
-            className="size-11 shrink-0 rounded-lg object-contain"
+            width={40}
+            height={40}
+            className="size-10 shrink-0 rounded-lg object-contain"
           />
           <span
-            className="truncate text-[26px] font-bold tracking-tight text-sidebar-foreground"
-            style={{ fontFamily: 'var(--font-heading)' }}
+            className="min-w-0 text-sidebar-foreground"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              lineHeight: 1,
+              whiteSpace: 'nowrap',
+              fontSize: 'clamp(18px, 5vw, 26px)',
+              display: 'flex',
+              alignItems: 'center',
+            }}
           >
             OrsusHealth
           </span>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="gap-0 px-0">
+      <SidebarContent className="gap-0 px-0" style={{ paddingTop: '1rem' }}>
         <SidebarGroup className="py-2" style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
           <SidebarGroupContent>
             <SidebarMenu className="gap-2">
@@ -168,14 +180,14 @@ export function DashboardAppSidebar({
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-56 min-w-56 rounded-xl p-1 shadow-lg border border-border/60"
+                className="w-64 min-w-64 rounded-2xl border border-border/70 bg-white/95 p-2 shadow-xl backdrop-blur-sm dark:bg-zinc-900/95"
                 side="right"
                 align="end"
                 sideOffset={14}
               >
-                <DropdownMenuLabel className="p-2 font-normal">
+                <DropdownMenuLabel className="rounded-xl px-3 py-2.5 font-normal">
                   <div className="flex items-center gap-3 text-left">
-                    <Avatar className="size-10 rounded-full border border-border/50">
+                    <Avatar className="size-10 rounded-full border border-border/60 shadow-sm">
                       {avatarUrl ? (
                         <AvatarImage
                           src={avatarUrl}
@@ -188,38 +200,46 @@ export function DashboardAppSidebar({
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid min-w-0 flex-1 gap-0.5 leading-snug">
-                      <span className="truncate text-sm font-semibold">
+                      <span className="truncate text-sm font-semibold text-sidebar-foreground">
                         {displayName}
                       </span>
-                      <span className="truncate text-[11px] text-muted-foreground">
+                      <span className="truncate text-[11px] text-muted-foreground/90">
                         {email}
                       </span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator className="my-1" />
-                <div className="flex flex-col gap-0.5 px-0.5">
-                  <DropdownMenuItem className="gap-2.5 py-2 text-[13px] rounded-md">
-                    <User className="size-4 stroke-[2] text-muted-foreground" />
-                    Account
+                <DropdownMenuSeparator className="mx-1 my-2 bg-border/70" />
+                <div className="flex flex-col gap-1 px-1">
+                  <DropdownMenuItem className="gap-2.5 rounded-lg px-2 py-2.5 text-[13px] font-medium transition-colors hover:bg-accent/80">
+                    <span className="inline-flex size-7 items-center justify-center rounded-md bg-muted/80 text-muted-foreground">
+                      <User className="size-4 stroke-[2]" />
+                    </span>
+                    <span>Account</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2.5 py-2 text-[13px] rounded-md">
-                    <CreditCard className="size-4 stroke-[2] text-muted-foreground" />
-                    Billing
+                  <DropdownMenuItem className="gap-2.5 rounded-lg px-2 py-2.5 text-[13px] font-medium transition-colors hover:bg-accent/80">
+                    <span className="inline-flex size-7 items-center justify-center rounded-md bg-muted/80 text-muted-foreground">
+                      <CreditCard className="size-4 stroke-[2]" />
+                    </span>
+                    <span>Billing</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2.5 py-2 text-[13px] rounded-md">
-                    <Bell className="size-4 stroke-[2] text-muted-foreground" />
-                    Notifications
+                  <DropdownMenuItem className="gap-2.5 rounded-lg px-2 py-2.5 text-[13px] font-medium transition-colors hover:bg-accent/80">
+                    <span className="inline-flex size-7 items-center justify-center rounded-md bg-muted/80 text-muted-foreground">
+                      <Bell className="size-4 stroke-[2]" />
+                    </span>
+                    <span>Notifications</span>
                   </DropdownMenuItem>
                 </div>
-                <DropdownMenuSeparator className="my-1" />
-                <div className="px-0.5 pb-0.5">
+                <DropdownMenuSeparator className="mx-1 my-2 bg-border/70" />
+                <div className="px-1 pb-1">
                   <DropdownMenuItem
-                    className="gap-2.5 py-2 text-[13px] rounded-md text-red-600 focus:bg-red-50 focus:text-red-700 dark:text-red-500 dark:focus:bg-red-500/10 dark:focus:text-red-400"
+                    className="gap-2.5 rounded-lg px-2 py-2.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50/90 focus:bg-red-50 focus:text-red-700 dark:text-red-500 dark:hover:bg-red-500/10 dark:focus:bg-red-500/10 dark:focus:text-red-400"
                     onSelect={() => onSignOut()}
                   >
-                    <LogOut className="size-4 stroke-[2]" />
-                    Log out
+                    <span className="inline-flex size-7 items-center justify-center rounded-md bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                      <LogOut className="size-4 stroke-[2]" />
+                    </span>
+                    <span>Log out</span>
                   </DropdownMenuItem>
                 </div>
               </DropdownMenuContent>
