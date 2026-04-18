@@ -81,7 +81,7 @@ function FieldHint({ label, hint }) {
           <CircleHelp className="h-3.5 w-3.5" strokeWidth={2} />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[240px] text-left leading-snug">
+      <TooltipContent side="top" className="max-w-[240px] text-left leading-snug" style={{ padding: "0.25rem"}}>
         {hint}
       </TooltipContent>
     </Tooltip>
@@ -111,6 +111,7 @@ function SectionCard({ title, description, children, className }) {
         'overflow-hidden rounded-xl border border-zinc-200/70 bg-white/55 shadow-[0_2px_12px_rgba(0,0,0,0.04)] ring-1 ring-white/30',
         className
       )}
+      style={{ padding: "0.5rem", marginBottom: "0.5rem"}}
     >
       <div className="border-b border-zinc-100/90 bg-gradient-to-r from-teal-500/[0.07] via-teal-500/[0.02] to-transparent px-5 py-4 sm:px-6">
         <h3
@@ -138,6 +139,7 @@ function ChoiceCard({ title, hint, selected, onClick }) {
           ? 'border-teal-500 bg-gradient-to-br from-teal-50/90 to-teal-50/40 shadow-[inset_0_0_0_1px_rgba(20,184,166,0.35)]'
           : 'border-zinc-200/85 bg-white/70 hover:border-teal-300/70 hover:bg-white/90'
       )}
+      style={{ padding: "0.5rem"}}
     >
       <span className="text-sm font-semibold text-zinc-900">{title}</span>
       <span className="text-xs leading-snug text-zinc-500">{hint}</span>
@@ -159,21 +161,21 @@ function OptionCardGroup({ value, onChange, options, columns = 'sm:grid-cols-2',
           />
         ))}
       </div>
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{error}</p> : null}
     </div>
   );
 }
 
 function StepIndicator({ step }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={{marginTop: "0.5rem", marginBottom: "0.5rem"}}>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200/80">
         <div
           className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all duration-500 ease-out"
           style={{ width: `${(step / 3) * 100}%` }}
         />
       </div>
-      <ol className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+      <ol className="flex flex-col gap-2 sm:flex-row sm:gap-3" style={{paddingTop: "0.5rem"}}>
         {STEPS.map((s) => {
           const done = step > s.n;
           const current = step === s.n;
@@ -186,6 +188,7 @@ function StepIndicator({ step }) {
                   done && !current && 'border-zinc-200/60 bg-zinc-50/90',
                   !done && !current && 'border-zinc-200/40 bg-zinc-50/40 opacity-80'
                 )}
+                style={{ padding: "0.5rem" }}
               >
                 <span
                   className={cn(
@@ -230,7 +233,7 @@ export default function AssessmentForm() {
       Sex: '',
       RestingBP: '',
       Cholesterol: '',
-      FastingBS: false,
+      FastingBS: '',
       MaxHR: '',
       ChestPainType: '',
       RestingECG: '',
@@ -313,7 +316,7 @@ export default function AssessmentForm() {
   return (
     <div
       className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl p-5 md:p-8"
-      style={{ scrollbarWidth: 'none' }}
+      style={{ scrollbarWidth: 'none', paddingLeft: "1rem", paddingRight: "1rem" }}
     >
       <div className="mb-6 shrink-0 space-y-1">
         <h2
@@ -338,7 +341,7 @@ export default function AssessmentForm() {
                 title="Patient details"
                 description="Legal name and age used for this assessment record."
               >
-                <div className="space-y-2">
+                <div className="space-y-2" style={{ paddingTop: "0.5rem" }}>
                   <FieldLabel htmlFor="FullName" hint="Use the name you want shown on exported reports.">
                     Full name
                   </FieldLabel>
@@ -350,13 +353,14 @@ export default function AssessmentForm() {
                     aria-invalid={errors.FullName ? 'true' : undefined}
                     className={cn(inputClass, errors.FullName && 'border-red-400 focus-visible:ring-red-200')}
                     {...register('FullName')}
+                    style={{ marginTop: "0.25rem", textIndent: "0.5rem"}}
                   />
                   {errors.FullName ? (
-                    <p className="text-xs text-red-600">{errors.FullName.message}</p>
+                    <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{errors.FullName.message}</p>
                   ) : null}
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8" style={{ paddingTop: "0.5rem" }}>
                   <div className="space-y-2">
                     <FieldLabel
                       htmlFor="Age"
@@ -372,8 +376,9 @@ export default function AssessmentForm() {
                       aria-invalid={errors.Age ? 'true' : undefined}
                       className={cn(inputClass, errors.Age && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('Age')}
+                      style={{ marginTop: "0.25rem", textIndent: "0.5rem"}}
                     />
-                    {errors.Age ? <p className="text-xs text-red-600">{errors.Age.message}</p> : null}
+                    {errors.Age ? <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{errors.Age.message}</p> : null}
                   </div>
                 </div>
               </SectionCard>
@@ -405,7 +410,7 @@ export default function AssessmentForm() {
                 title="Vitals & lab values"
                 description="Resting measurements and lipids from your latest visit or home readings."
               >
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8" style={{ paddingTop: "0.5rem" }}>
                   <div className="space-y-2">
                     <FieldLabel
                       htmlFor="RestingBP"
@@ -421,9 +426,10 @@ export default function AssessmentForm() {
                       aria-invalid={errors.RestingBP ? 'true' : undefined}
                       className={cn(inputClass, errors.RestingBP && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('RestingBP')}
+                      style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
                     {errors.RestingBP ? (
-                      <p className="text-xs text-red-600">{errors.RestingBP.message}</p>
+                      <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{errors.RestingBP.message}</p>
                     ) : null}
                   </div>
 
@@ -442,9 +448,10 @@ export default function AssessmentForm() {
                       aria-invalid={errors.Cholesterol ? 'true' : undefined}
                       className={cn(inputClass, errors.Cholesterol && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('Cholesterol')}
+                      style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
                     {errors.Cholesterol ? (
-                      <p className="text-xs text-red-600">{errors.Cholesterol.message}</p>
+                      <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{errors.Cholesterol.message}</p>
                     ) : null}
                   </div>
 
@@ -463,8 +470,9 @@ export default function AssessmentForm() {
                       aria-invalid={errors.MaxHR ? 'true' : undefined}
                       className={cn(inputClass, errors.MaxHR && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('MaxHR')}
+                      style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
-                    {errors.MaxHR ? <p className="text-xs text-red-600">{errors.MaxHR.message}</p> : null}
+                    {errors.MaxHR ? <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{errors.MaxHR.message}</p> : null}
                   </div>
                 </div>
               </SectionCard>
@@ -497,7 +505,7 @@ export default function AssessmentForm() {
               >
                 <div className="space-y-6">
                   <div>
-                    <div className="mb-3">
+                    <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Choose the category that best matches the patient’s reported pain.">
                         Chest pain type
                       </FieldLabel>
@@ -518,7 +526,7 @@ export default function AssessmentForm() {
                   </div>
 
                   <div>
-                    <div className="mb-3">
+                    <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Resting ECG classification before exercise or pharmacologic stress.">
                         Resting ECG
                       </FieldLabel>
@@ -546,7 +554,7 @@ export default function AssessmentForm() {
               >
                 <div className="space-y-6">
                   <div>
-                    <div className="mb-3">
+                    <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Slope of the ST segment at maximal exercise—often paired with Oldpeak.">
                         ST slope
                       </FieldLabel>
@@ -566,7 +574,7 @@ export default function AssessmentForm() {
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                     <FieldLabel
                       htmlFor="Oldpeak"
                       hint="ST depression relative to rest (often in mm). Can be negative in some tracings; valid range here is −5 to 10."
@@ -582,6 +590,7 @@ export default function AssessmentForm() {
                       aria-invalid={errors.Oldpeak ? 'true' : undefined}
                       className={cn(inputClass, errors.Oldpeak && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('Oldpeak')}
+                      style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
                     {errors.Oldpeak ? (
                       <p className="text-xs text-red-600">{errors.Oldpeak.message}</p>
@@ -589,7 +598,7 @@ export default function AssessmentForm() {
                   </div>
 
                   <div>
-                    <div className="mb-3">
+                    <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Whether the patient reported angina during the exercise portion of testing.">
                         Exercise-induced angina
                       </FieldLabel>
@@ -614,15 +623,15 @@ export default function AssessmentForm() {
           )}
         </div>
 
-        <div className="shrink-0 border-t border-teal-900/10 bg-gradient-to-b from-zinc-50/30 to-white/80 pt-5 backdrop-blur-[2px]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 space-y-0.5">
               <p className="text-xs font-medium text-teal-900/80">{footerHint}</p>
               <p className="truncate text-xs text-zinc-500">
                 {STEPS[step - 1].title} · {STEPS[step - 1].caption}
               </p>
             </div>
-            <div className="flex items-center justify-end gap-3 sm:min-w-[280px]">
+            <div className="flex items-center justify-end gap-3 sm:min-w-[280px]" style={{ marginBottom: "0.25rem", marginTop: "0.25rem"}}>
               {step > 1 ? (
                 <Button
                   type="button"
@@ -640,7 +649,7 @@ export default function AssessmentForm() {
                 <Button
                   type="button"
                   onClick={nextStep}
-                  className="h-10 min-w-[8rem] rounded-full bg-zinc-900 px-6 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] transition-all hover:bg-zinc-800"
+                  className="h-10 min-w-[8rem] rounded-full bg-gradient-to-br from-[#0F172A] to-[#1e293b] px-6 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(15,23,42,0.25)] transition-all hover:scale-[1.02] hover:from-[#1e293b] hover:to-[#334155] hover:shadow-[0_6px_20px_rgba(15,23,42,0.35)] active:scale-[0.98]"
                 >
                   Next step
                 </Button>
@@ -648,7 +657,7 @@ export default function AssessmentForm() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="h-10 min-w-[10rem] rounded-full border-0 bg-gradient-to-b from-[#14b8a6] to-[#0f766e] px-8 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition-all hover:shadow-[0_12px_28px_rgba(20,184,166,0.45)] disabled:cursor-wait disabled:opacity-70"
+                  className="h-10 min-w-[10rem] rounded-full border-0 bg-gradient-to-b from-[#14b8a6] to-[#0f766e] px-8 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition-all hover:scale-[1.02] hover:shadow-[0_12px_28px_rgba(20,184,166,0.45)] active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
                 >
                   {loading ? 'Processing…' : 'Predict risk'}
                 </Button>

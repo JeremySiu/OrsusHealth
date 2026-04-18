@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { Send } from 'lucide-react';
 import Grainient from '../components/react-bits/Grainient';
 import GlassSurface from '../components/react-bits/GlassSurface';
 import { DashboardAppSidebar } from '../components/DashboardAppSidebar';
@@ -55,6 +56,11 @@ function Dashboard() {
   const audioRef = useRef(null);
   const triggerTtsPlayRef = useRef(null);
   const ttsTextRef = useRef(ttsText);
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef(null);
   ttsTextRef.current = ttsText;
 
   /** One deliberate tap: browsers allow audio only from a user gesture; TTS returns async so we play on tap after the file is ready. */
@@ -307,6 +313,32 @@ function Dashboard() {
   const handleVideoEnd = useCallback(() => {
     setIntroFinished(true);
   }, []);
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleChatSend = useCallback(() => {
+    const text = chatInput.trim();
+    if (!text) return;
+    setChatMessages((prev) => [
+      ...prev,
+      { role: 'user', content: text, id: Date.now() },
+    ]);
+    setChatInput('');
+    // Placeholder bot response — swap with real API later
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: "Thanks for your message! I'm Dr. Bear 🐻 — your personal cardiac health assistant. This feature is coming soon!",
+          id: Date.now() + 1,
+        },
+      ]);
+    }, 900);
+  }, [chatInput]);
 
   if (loading) {
     return (
@@ -594,11 +626,77 @@ function Dashboard() {
                               zIndex: 2,
                               transition: BEAR_MEDIA_TRANSITION,
                               opacity: introFinished ? 0 : 1,
+                              pointerEvents: introFinished ? 'none' : 'auto',
                               backgroundColor: 'transparent',
                               border: 'none',
                               outline: 'none',
                             }}
                           />
+
+                          {/* DR BEAR CHAT PANEL — overlaid on stomach area */}
+                          <div
+                            className="bear-chat-panel"
+                            style={{
+                              position: 'absolute',
+                              left: '50%',
+                              bottom: 0,
+                              transform: 'translateX(-50%)',
+                              width: '90%',
+                              height: '43%',
+                              zIndex: 10,
+                              opacity: soundUnlocked ? 1 : 0,
+                              pointerEvents: soundUnlocked ? 'auto' : 'none',
+                              transition: 'opacity 0.6s ease',
+                            }}
+                          >
+                            <div className="bear-chat-card">
+                              {/* Messages */}
+                              <div className="bear-chat-messages">
+                                {chatMessages.length === 0 && (
+                                  <div className="bear-chat-empty">
+                                    <p>Ask Dr. Bear anything about heart health!</p>
+                                  </div>
+                                )}
+                                {chatMessages.map((msg) => (
+                                  <div
+                                    key={msg.id}
+                                    className={`bear-chat-bubble ${
+                                      msg.role === 'user' ? 'bear-chat-bubble--user' : 'bear-chat-bubble--assistant'
+                                    }`}
+                                  >
+                                    {msg.content}
+                                  </div>
+                                ))}
+                                <div ref={chatEndRef} />
+                              </div>
+
+                              {/* Input bar */}
+                              <form
+                                className="bear-chat-input-bar"
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  handleChatSend();
+                                }}
+                              >
+                                <input
+                                  type="text"
+                                  className="bear-chat-input"
+                                  placeholder="Type a message…"
+                                  value={chatInput}
+                                  onChange={(e) => setChatInput(e.target.value)}
+                                  autoComplete="off"
+                                />
+                                <button
+                                  type="submit"
+                                  className="bear-chat-send-btn"
+                                  disabled={!chatInput.trim()}
+                                  aria-label="Send message"
+                                >
+                                  <Send className="size-4" />
+                                </button>
+                              </form>
+                            </div>
+                          </div>
                         </div>
                     </div>
                   </div>

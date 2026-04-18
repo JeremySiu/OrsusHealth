@@ -106,10 +106,10 @@ export default function MyReports() {
     <div className="flex flex-col h-full overflow-y-auto p-6 md:p-8" style={{ scrollbarWidth: 'none' }}>
       {/* Header */}
       <div className="mb-8 shrink-0">
-        <h2 className="text-3xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
+        <h2 className="text-3xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'var(--font-heading)', marginLeft: '1rem'}}>
           My Reports
         </h2>
-        <p className="text-sm text-zinc-500 mt-2">
+        <p className="text-sm text-zinc-500 mt-2" style={{ marginLeft: '1rem', marginBottom: '1rem'}}>
           {reports.length > 0
             ? `${reports.length} assessment${reports.length !== 1 ? 's' : ''} on file`
             : 'No assessment reports yet'}
@@ -129,7 +129,7 @@ export default function MyReports() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700" style = {{marginLeft: "1rem", marginRight: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))"}}>
           {reports.map((report, idx) => {
             const form = report.value?.form_data || {};
             const prediction = report.value?.prediction || {};
@@ -146,16 +146,16 @@ export default function MyReports() {
             return (
               <Card
                 key={report.id}
-                className="bg-white/40 backdrop-blur-xl border-white/50 shadow-md hover:shadow-lg transition-shadow duration-300 animate-in fade-in slide-in-from-bottom-2"
-                style={{ animationDelay: `${idx * 80}ms`, animationFillMode: 'backwards' }}
+                className="bg-white/40 backdrop-blur-xl border-white/50 shadow-md hover:shadow-lg transition-shadow duration-300 animate-in fade-in slide-in-from-bottom-2" 
+                style={{ animationDelay: `${idx * 80}ms`, animationFillMode: 'backwards' , paddingLeft: "0.5rem", paddingRight: "0.5rem", paddingBottom: "0.5rem"}}
               >
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2" style={{ marginTop: "0.5rem"}}>
                   <div className="flex items-center justify-between w-full">
                     <CardTitle className="text-base font-semibold text-zinc-800 flex items-center gap-2" style={{ fontFamily: 'var(--font-heading)' }}>
                       <FileText className="w-4 h-4 text-teal-600 shrink-0" />
                       Cardiovascular Assessment
                     </CardTitle>
-                    <Badge className={`${risk.color} text-[11px] font-semibold px-2 py-0.5`}>
+                    <Badge className={`${risk.color} text-[11px] font-semibold px-2 py-0.5`} style={{paddingLeft: "0.5rem", paddingRight: "0.5rem"}}>
                       {risk.text}
                     </Badge>
                   </div>
@@ -170,7 +170,7 @@ export default function MyReports() {
 
                   {/* Quick Stats Grid */}
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white/50 border border-white/60">
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white/50 border border-white/60" style={{paddingTop: "0.25rem", paddingBottom: "0.25rem"}}>
                       <Heart className="w-3.5 h-3.5 text-rose-500" />
                       <div>
                         <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Risk</p>
@@ -191,12 +191,12 @@ export default function MyReports() {
                   </div>
 
                   {/* Patient Info */}
-                  <div className="flex items-center justify-between text-xs text-zinc-500 pt-1">
+                  <div className="flex items-center justify-between text-xs text-zinc-500 pt-1" style={{marginTop: "0.25rem"}}>
                     <span>{form.FullName || 'No name'} &bull; Age {form.Age || '?'} &bull; {form.Sex === 'M' ? 'Male' : form.Sex === 'F' ? 'Female' : '?'}</span>
                   </div>
                 </CardContent>
 
-                <CardFooter className="border-t border-black/5 bg-white/20 px-4 py-3 flex items-center gap-4">
+                <CardFooter className="border-t border-black/5 bg-white/20 px-4 py-3 flex items-center gap-4" style={{paddingTop: "0.5rem"}}>
                   <button
                     onClick={() => handleView(report)}
                     disabled={viewingId === report.id || !report.value?.report_path}
