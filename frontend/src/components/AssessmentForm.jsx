@@ -81,7 +81,11 @@ function FieldHint({ label, hint }) {
           <CircleHelp className="h-3.5 w-3.5" strokeWidth={2} />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[240px] text-left leading-snug" style={{ padding: "0.25rem"}}>
+      <TooltipContent 
+        side="top" 
+        className="max-w-[240px] text-left leading-snug bg-zinc-50 text-zinc-700 shadow-md font-medium" 
+        style={{ padding: "0.5rem"}}
+      >
         {hint}
       </TooltipContent>
     </Tooltip>
