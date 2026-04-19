@@ -58,6 +58,7 @@ Resources:
       PackageType: Image
       Architectures:
         - x86_64
+      CodeUri: .
       Environment:
         Variables:
           GRADIUM_API_KEY: !Ref GradiumApiKey
