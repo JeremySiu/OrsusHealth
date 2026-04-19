@@ -1,9 +1,6 @@
-# Use the AWS Lambda Web Adapter as a binary
-COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter
-
 FROM python:3.12-slim
 
-# Copy the adapter extension specifically to the Lambda location
+# Use the AWS Lambda Web Adapter as a binary
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter
 
 ENV LAMBDA_TASK_ROOT=/var/task
