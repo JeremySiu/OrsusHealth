@@ -32,6 +32,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 function initialsFromName(name) {
@@ -58,9 +59,13 @@ export function DashboardAppSidebar({
   onSignOut,
 }) {
   const initials = useMemo(() => initialsFromName(displayName), [displayName]);
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const handleSelect = (id) => {
     if (onActiveIdChange) onActiveIdChange(id);
+    if (isMobile) {
+      setOpenMobile(false);
+    }
   };
 
   return (

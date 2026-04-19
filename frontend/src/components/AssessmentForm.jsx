@@ -69,12 +69,32 @@ const inputClass =
   'h-10 md:h-11 rounded-lg border-zinc-200/90 bg-white/85 px-3 text-sm shadow-sm transition-[color,box-shadow,border-color] placeholder:text-zinc-400 focus-visible:border-teal-500 focus-visible:ring-[3px] focus-visible:ring-teal-500/20';
 
 function FieldHint({ label, hint }) {
+  const [open, setOpen] = useState(false);
+  const openedAt = React.useRef(0);
+
   if (!hint) return null;
   return (
-    <Tooltip>
+    <Tooltip 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        if (newOpen) {
+          openedAt.current = Date.now();
+        }
+        setOpen(newOpen);
+      }}
+    >
       <TooltipTrigger asChild>
         <button
           type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            // If the tooltip was opened via focus/hover within the last 300ms,
+            // ignore this click because it's likely a simulated click from a mobile tap.
+            if (Date.now() - openedAt.current < 300) {
+              return;
+            }
+            setOpen((prev) => !prev);
+          }}
           className="inline-flex shrink-0 rounded-full p-1 text-zinc-400 transition-colors hover:bg-teal-500/10 hover:text-teal-700"
           aria-label={`More information: ${label}`}
         >
@@ -85,6 +105,7 @@ function FieldHint({ label, hint }) {
         side="top" 
         className="max-w-[240px] text-left leading-snug bg-zinc-50 text-zinc-700 shadow-md font-medium" 
         style={{ padding: "0.5rem"}}
+        onPointerDownOutside={() => setOpen(false)}
       >
         {hint}
       </TooltipContent>
