@@ -264,7 +264,10 @@ export default function AssessmentForm() {
       const API_BASE = import.meta.env.VITE_API_BASE_URL;
       const response = await fetch(`${API_BASE}predict`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_BACKEND_API_KEY
+        },
         body: JSON.stringify(payload),
       });
 

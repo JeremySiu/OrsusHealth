@@ -3,9 +3,10 @@ from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, Field
 
 from scripts.predict import predict_heart_disease
@@ -18,7 +19,21 @@ GRADIUM_BASES = {
     "eu": "https://eu.api.gradium.ai/api",
 }
 
-app = FastAPI()
+# Security: API Key requirement
+API_KEY_HEADER = APIKeyHeader(name="x-api-key", auto_error=False)
+
+async def validate_api_key(api_key: str = Security(API_KEY_HEADER)):
+    """Only allow requests that include the correct x-api-key header."""
+    expected_key = os.getenv("APP_API_KEY")
+    if expected_key and api_key == expected_key:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Unauthorized: Invalid or missing API Key.",
+    )
+
+# Apply security to all routes by default
+app = FastAPI(dependencies=[Security(validate_api_key)])
 
 # Allow all origins for cross-origin requests
 # REPLACE THIS WITH THE ACTUAL FRONTEND URL ONCE THE FRONTEND IS SET UP
@@ -38,6 +53,34 @@ def read_root():
 async def predict(data: dict):
     result = predict_heart_disease(data)
     return result
+
+
+class ChatRequest(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    messages: list[dict] = Field(
+        ...,
+        description='Conversation history as [{role: "user"|"assistant", content: "..."}]',
+    )
+
+
+@app.post("/chat")
+async def chat(body: ChatRequest):
+    """Dr. Bear chat endpoint — LangChain agent with Gemini + Streaming."""
+    from app.chat_agent import run_chat
+
+    # generator to yielded formatted chunks for better streaming handling
+    async def stream_generator():
+        async for chunk in run_chat(body.user_id, body.messages):
+            yield f"{chunk}\n"
+
+    return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
+
+
+@app.get("/chat")
+async def chat_get():
+    """Catch-all for accidental GET requests to the chat endpoint."""
+    return {"message": "Chat endpoint is active. Please use POST to send messages."}
 
 
 class TtsRequest(BaseModel):

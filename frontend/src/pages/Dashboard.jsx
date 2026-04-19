@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Send } from 'lucide-react';
+import { Send, RotateCcw } from 'lucide-react';
 import Grainient from '../components/react-bits/Grainient';
 import GlassSurface from '../components/react-bits/GlassSurface';
 import { DashboardAppSidebar } from '../components/DashboardAppSidebar';
@@ -60,7 +60,16 @@ function Dashboard() {
   // Chat state
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatStatus, setChatStatus] = useState('');
   const chatEndRef = useRef(null);
+
+  // Bear thinking animation state
+  const [isBearThinking, setIsBearThinking] = useState(false);
+  const [isBearThinkingEnd, setIsBearThinkingEnd] = useState(false);
+  const pendingReplyRef = useRef(null);
+  const thinkingStartRef = useRef(null);
+  const thinkingEndRef = useRef(null);
   ttsTextRef.current = ttsText;
 
   /** One deliberate tap: browsers allow audio only from a user gesture; TTS returns async so we play on tap after the file is ready. */
@@ -133,156 +142,123 @@ function Dashboard() {
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Fetch TTS on load; playback starts only after the user taps the overlay (gesture + audio ready).
-  useEffect(() => {
-    if (loading || !user) return;
+  const speakResponse = useCallback(
+    async (text) => {
+      if (!text) return;
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
+      if (!apiBase) return;
 
-    const text = ttsTextRef.current.trim();
-    const apiBase = (import.meta.env.VITE_API_BASE_URL || '')
-      .trim()
-      .replace(/\/$/, '');
-
-    let cancelled = false;
-    let objectUrl = null;
-    let pollId = null;
-
-    setTtsGateReady(false);
-    triggerTtsPlayRef.current = null;
-
-    /** Detach media from the blob before revoking, or the browser may log ERR_FILE_NOT_FOUND. */
-    const revokeBlobUrl = () => {
-      const a = audioRef.current;
-      if (a) {
-        a.pause();
-        a.src = '';
-        a.load();
+      // Stop any existing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
         audioRef.current = null;
       }
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-        objectUrl = null;
-      }
-    };
 
-    const endSpeech = () => {
-      if (!cancelled) {
+      try {
+        const res = await fetch(`${apiBase}/tts`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-api-key': import.meta.env.VITE_BACKEND_API_KEY
+          },
+          body: JSON.stringify({ text }),
+        });
+
+        if (!res.ok) throw new Error(`TTS failed: ${res.statusText}`);
+
+        const buf = await res.arrayBuffer();
+        const blob = new Blob([buf], { type: 'audio/wav' });
+        const objectUrl = URL.createObjectURL(blob);
+        const audio = new Audio(objectUrl);
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          setTalkCycle((n) => n + 1);
+          setSpeechAudioPlaying(true);
+          setSpeechEnded(false);
+        };
+
+        const cleanup = () => {
+          setSpeechAudioPlaying(false);
+          setSpeechEnded(true);
+          URL.revokeObjectURL(objectUrl);
+          if (audioRef.current === audio) {
+            audioRef.current = null;
+          }
+        };
+
+        audio.onended = cleanup;
+        audio.onerror = cleanup;
+
+        await audio.play();
+      } catch (err) {
+        console.warn('TTS Error:', err);
         setSpeechAudioPlaying(false);
         setSpeechEnded(true);
       }
-    };
+    },
+    [user?.id]
+  );
 
-    if (!text) {
-      endSpeech();
-      setTtsGateReady(true);
-      return undefined;
-    }
+  // Fetch initial TTS on load; playback starts only after user taps overlay
+  useEffect(() => {
+    if (loading || !user || !ttsText) return;
 
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
     if (!apiBase) {
-      endSpeech();
       setTtsGateReady(true);
-      return undefined;
+      return;
     }
 
-    const ac = new AbortController();
+    setTtsGateReady(false);
+    triggerTtsPlayRef.current = null;
 
     (async () => {
       try {
         const res = await fetch(`${apiBase}/tts`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-          signal: ac.signal,
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-api-key': import.meta.env.VITE_BACKEND_API_KEY
+          },
+          body: JSON.stringify({ text: ttsText }),
         });
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '');
-          throw new Error(errText || res.statusText);
-        }
+
+        if (!res.ok) throw new Error('Initial TTS failed');
         const buf = await res.arrayBuffer();
-        if (cancelled) return;
-
-        const bytes = new Uint8Array(buf);
-        if (!looksLikeWav(bytes)) {
-          const preview = new TextDecoder().decode(bytes.slice(0, 240));
-          console.warn('TTS: expected WAV (RIFF/WAVE), got:', preview);
-          endSpeech();
-          if (!cancelled) setTtsGateReady(true);
-          return;
-        }
-
         const blob = new Blob([buf], { type: 'audio/wav' });
-        objectUrl = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
         const audio = new Audio(objectUrl);
-        audio.volume = 1;
-        audioRef.current = audio;
 
-        let finished = false;
-        const finish = () => {
-          if (finished || cancelled) return;
-          finished = true;
-          if (pollId != null) {
-            window.clearInterval(pollId);
-            pollId = null;
-          }
-          revokeBlobUrl();
-          endSpeech();
+        triggerTtsPlayRef.current = async () => {
+          audioRef.current = audio;
+          audio.onplay = () => {
+            setTalkCycle((n) => n + 1);
+            setSpeechAudioPlaying(true);
+            setSpeechEnded(false);
+          };
+          const cleanup = () => {
+            setSpeechAudioPlaying(false);
+            setSpeechEnded(true);
+            URL.revokeObjectURL(objectUrl);
+          };
+          audio.onended = cleanup;
+          audio.onerror = cleanup;
+          await audio.play();
         };
 
-        audio.addEventListener('ended', finish);
-        audio.addEventListener('error', finish);
-        const onTimeUpdate = () => {
-          const d = audio.duration;
-          if (Number.isFinite(d) && d > 0 && audio.currentTime >= d - 0.2) {
-            finish();
-          }
-        };
-        audio.addEventListener('timeupdate', onTimeUpdate);
-
-        pollId = window.setInterval(() => {
-          if (cancelled || finished) return;
-          if (audio.ended) finish();
-        }, 250);
-
-        const markPlayStarted = () => {
-          if (cancelled) return;
-          setTalkCycle((n) => n + 1);
-          setSpeechAudioPlaying(true);
-        };
-
-        const attemptPlay = async () => {
-          try {
-            await audio.play();
-            if (!cancelled) {
-              markPlayStarted();
-            }
-          } catch (e) {
-            console.warn('TTS: audio.play() failed:', e);
-            finish();
-          }
-        };
-
-        triggerTtsPlayRef.current = () => {
-          void attemptPlay();
-        };
-
-        if (!cancelled) setTtsGateReady(true);
+        setTtsGateReady(true);
       } catch (e) {
-        if (e?.name === 'AbortError') return;
-        revokeBlobUrl();
-        endSpeech();
-        if (!cancelled) setTtsGateReady(true);
+        console.warn('Initial TTS Load Error:', e);
+        setTtsGateReady(true);
       }
     })();
 
     return () => {
-      cancelled = true;
-      ac.abort();
-      if (pollId != null) window.clearInterval(pollId);
       triggerTtsPlayRef.current = null;
-      setSpeechAudioPlaying(false);
-      setTtsGateReady(false);
-      revokeBlobUrl();
     };
-  }, [user?.id, loading]);
+  }, [user?.id, loading, ttsText]);
+
 
   useEffect(() => {
     setSoundUnlocked(false);
@@ -319,26 +295,140 @@ function Dashboard() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  const handleChatSend = useCallback(() => {
+  // Imperatively control thinking-start video playback
+  useEffect(() => {
+    const vid = thinkingStartRef.current;
+    if (!vid) return;
+    if (isBearThinking) {
+      vid.currentTime = 0;
+      vid.play().catch(() => {});
+    } else {
+      vid.pause();
+    }
+  }, [isBearThinking]);
+
+  // Imperatively control thinking-end video playback
+  useEffect(() => {
+    const vid = thinkingEndRef.current;
+    if (!vid) return;
+    if (isBearThinkingEnd) {
+      vid.currentTime = 0;
+      vid.play().catch(() => {});
+    } else {
+      vid.pause();
+    }
+  }, [isBearThinkingEnd]);
+
+  const handleNewChat = useCallback(() => {
+    setChatMessages([]);
+    setChatStatus('');
+    setIsChatLoading(false);
+    setIsBearThinking(false);
+    setIsBearThinkingEnd(false);
+    pendingReplyRef.current = null;
+    // Also reset any greeting if desired, or keep it fresh
+  }, []);
+
+  const handleThinkingEndVideo = useCallback(() => {
+    // legacy logic: now we push messages immediately in handleChatSend
+    setIsBearThinkingEnd(false);
+  }, []);
+
+  const handleChatSend = useCallback(async () => {
     const text = chatInput.trim();
-    if (!text) return;
-    setChatMessages((prev) => [
-      ...prev,
-      { role: 'user', content: text, id: Date.now() },
-    ]);
+    if (!text || isChatLoading) return;
+
+    // User message
+    const userMsg = { role: 'user', content: text, id: Date.now() };
+    const updatedMessages = [...chatMessages, userMsg];
+    setChatMessages(updatedMessages);
     setChatInput('');
-    // Placeholder bot response — swap with real API later
-    setTimeout(() => {
+    setIsChatLoading(true);
+    setChatStatus('Dr. Bear is thinking…');
+
+    // Switch bear to thinking animation
+    setIsBearThinking(true);
+    setIsBearThinkingEnd(false);
+
+    let assistantMsgId = Date.now() + 1;
+    let fullContent = '';
+    let buffer = '';
+
+    try {
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
+      const res = await fetch(`${apiBase}/chat`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_BACKEND_API_KEY
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!res.body) throw new Error('No response body');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last partial line in the buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const data = JSON.parse(line);
+            if (data.type === 'tool') {
+              const toolMap = {
+                get_health_records: 'Checking your health records…',
+                get_latest_assessment: 'Looking at your latest assessment…',
+                get_clinical_facts: 'Consulting cardiovascular facts…',
+              };
+              setChatStatus(toolMap[data.name] || `Dr. Bear is using ${data.name}…`);
+            } else if (data.type === 'text') {
+              fullContent += data.content;
+              setChatMessages((prev) => {
+                const filtered = prev.filter((m) => m.id !== assistantMsgId);
+                return [
+                  ...filtered,
+                  { role: 'assistant', content: fullContent, id: assistantMsgId },
+                ];
+              });
+            }
+          } catch (e) {
+            console.error('Failed to parse chunk:', line, e);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
       setChatMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: "Thanks for your message! I'm Dr. Bear 🐻 — your personal cardiac health assistant. This feature is coming soon!",
-          id: Date.now() + 1,
+          content: "I'm sorry, I had trouble connecting. Please check your internet and try again!",
+          id: Date.now() + 5,
         },
       ]);
-    }, 900);
-  }, [chatInput]);
+    } finally {
+      setIsBearThinking(false);
+      setIsBearThinkingEnd(true);
+      setIsChatLoading(false);
+      setChatStatus('');
+      
+      // Speak the final response
+      if (fullContent) {
+        speakResponse(fullContent);
+      }
+    }
+  }, [chatInput, user?.id, isChatLoading, speakResponse]);
+
 
   if (loading) {
     return (
@@ -351,7 +441,7 @@ function Dashboard() {
   if (!user) return null;
 
   const showIdleUnderBear =
-    introFinished && (speechEnded || !speechAudioPlaying);
+    introFinished && (speechEnded || !speechAudioPlaying) && !isBearThinking && !isBearThinkingEnd;
   const showMustacheTalking = !speechEnded && speechAudioPlaying;
   const showMobileBearToggle = isMobile;
   const showContentPanel = soundUnlocked && (!isMobile || !showBearOnlyMobile);
@@ -633,6 +723,56 @@ function Dashboard() {
                             }}
                           />
 
+                          {/* Thinking-start: loops while waiting for /chat response */}
+                          <video
+                            ref={thinkingStartRef}
+                            src="/thinking-start.webm"
+                            muted
+                            playsInline
+                            loop
+                            preload="auto"
+                            autoPlay={isBearThinking}
+                            onLoadedData={() => { if (isBearThinking) thinkingStartRef.current?.play?.().catch(() => {}); }}
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              height: '100%',
+                              width: '100%',
+                              objectFit: 'contain',
+                              display: 'block',
+                              zIndex: 3,
+                              transition: BEAR_MEDIA_TRANSITION,
+                              opacity: isBearThinking ? 1 : 0,
+                              pointerEvents: 'none',
+                              backgroundColor: 'transparent',
+                            }}
+                          />
+
+                          {/* Thinking-end: plays once after response arrives, then back to idle */}
+                          <video
+                            ref={thinkingEndRef}
+                            src="/thinking-end.webm"
+                            muted
+                            playsInline
+                            preload="auto"
+                            autoPlay={isBearThinkingEnd}
+                            onLoadedData={() => { if (isBearThinkingEnd) thinkingEndRef.current?.play?.().catch(() => {}); }}
+                            onEnded={handleThinkingEndVideo}
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              height: '100%',
+                              width: '100%',
+                              objectFit: 'contain',
+                              display: 'block',
+                              zIndex: 4,
+                              transition: BEAR_MEDIA_TRANSITION,
+                              opacity: isBearThinkingEnd ? 1 : 0,
+                              pointerEvents: 'none',
+                              backgroundColor: 'transparent',
+                            }}
+                          />
+
                           {/* DR BEAR CHAT PANEL — overlaid on stomach area */}
                           <div
                             className="bear-chat-panel"
@@ -649,14 +789,25 @@ function Dashboard() {
                               transition: 'opacity 0.6s ease',
                             }}
                           >
-                            <div className="bear-chat-card">
-                              {/* Messages */}
-                              <div className="bear-chat-messages">
-                                {chatMessages.length === 0 && (
-                                  <div className="bear-chat-empty">
-                                    <p>Ask Dr. Bear anything about heart health!</p>
+                                <div className="bear-chat-card relative">
+                                  {/* Header Actions */}
+                                  <div className="absolute top-2 right-2 z-20">
+                                    <button
+                                      onClick={handleNewChat}
+                                      className="p-1.5 rounded-full bg-black/5 hover:bg-black/10 text-teal-800 transition-colors"
+                                      title="New Chat"
+                                    >
+                                      <RotateCcw className="size-3.5" />
+                                    </button>
                                   </div>
-                                )}
+
+                                  {/* Messages */}
+                                  <div className="bear-chat-messages">
+                                    {chatMessages.length === 0 && (
+                                      <div className="bear-chat-empty">
+                                        <p>Ask Dr. Bear anything about heart health!</p>
+                                      </div>
+                                    )}
                                 {chatMessages.map((msg) => (
                                   <div
                                     key={msg.id}
@@ -667,10 +818,16 @@ function Dashboard() {
                                     {msg.content}
                                   </div>
                                 ))}
-                                <div ref={chatEndRef} />
-                              </div>
+                                </div>
 
-                              {/* Input bar */}
+                                {chatStatus && (
+                                  <div className="px-3 py-1 text-[10px] text-teal-800/60 font-medium italic animate-pulse flex items-center gap-1.5" style={{marginLeft: "0.5rem"}}>
+                                    <div className="size-1 rounded-full bg-teal-500" />
+                                    {chatStatus}
+                                  </div>
+                                )}
+
+                                {/* Input bar */}
                               <form
                                 className="bear-chat-input-bar"
                                 onSubmit={(e) => {
@@ -681,15 +838,16 @@ function Dashboard() {
                                 <input
                                   type="text"
                                   className="bear-chat-input"
-                                  placeholder="Type a message…"
+                                  placeholder={isChatLoading ? "Dr. Bear is thinking…" : "Type a message…"}
                                   value={chatInput}
                                   onChange={(e) => setChatInput(e.target.value)}
                                   autoComplete="off"
+                                  disabled={isChatLoading}
                                 />
                                 <button
                                   type="submit"
                                   className="bear-chat-send-btn"
-                                  disabled={!chatInput.trim()}
+                                  disabled={!chatInput.trim() || isChatLoading}
                                   aria-label="Send message"
                                 >
                                   <Send className="size-4" />
