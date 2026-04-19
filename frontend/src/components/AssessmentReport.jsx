@@ -39,7 +39,16 @@ export default function AssessmentReport({ result, formData, onRestart }) {
         const canvas = await html2canvas(element, {
           scale: 2, 
           useCORS: true,
-          logging: false
+          logging: false,
+          windowWidth: 816,
+          onclone: (clonedDoc) => {
+            const wrapper = clonedDoc.getElementById('pdf-wrapper');
+            if (wrapper) {
+              wrapper.style.position = 'relative';
+              wrapper.style.left = '0';
+              wrapper.style.top = '0';
+            }
+          }
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -118,7 +127,11 @@ export default function AssessmentReport({ result, formData, onRestart }) {
           Assessment Failed
         </h2>
         <div className="text-red-500 mb-6 bg-red-50 px-6 py-4 rounded-xl border border-red-100">{result.error}</div>
-        <button onClick={onRestart} className="mt-12 rounded-full bg-zinc-900 px-8 py-3 text-sm font-medium text-white transition-all shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.2)] hover:bg-zinc-800 flex items-center gap-2">
+        <button
+            onClick={onRestart}
+            className="h-10 min-w-[8rem] flex items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: 'linear-gradient(to bottom right, #0F172A, #1e293b)', boxShadow: '0 4px 12px rgba(15,23,42,0.25)', padding: "0.5rem"}}
+          >
           <RefreshCcw className="w-4 h-4"/> Start New Assessment
         </button>
       </div>
@@ -148,14 +161,15 @@ export default function AssessmentReport({ result, formData, onRestart }) {
       <div className="pb-4 pt-4 flex justify-center shrink-0">
          <button
             onClick={onRestart}
-            className="rounded-full bg-zinc-900 px-8 py-2.5 text-sm font-medium text-white transition-all shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.2)] hover:bg-zinc-800 flex items-center gap-2"
+            className="h-10 min-w-[8rem] flex items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: 'linear-gradient(to bottom right, #0F172A, #1e293b)', boxShadow: '0 4px 12px rgba(15,23,42,0.25)', padding: "0.5rem"}}
           >
             <RefreshCcw className="w-4 h-4" /> Start New Assessment
           </button>
       </div>
 
       {/* HIDDEN OFFFSCREEN HTML TEMPLATE FOR PDF RENDERER */}
-      <div className="absolute top-0 left-[-9999px]">
+      <div id="pdf-wrapper" className="absolute top-0 left-[-9999px]">
         <div 
           ref={reportRef} 
           className="bg-white text-zinc-900"
