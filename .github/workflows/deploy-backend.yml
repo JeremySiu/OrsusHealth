@@ -42,6 +42,12 @@ jobs:
           GRADIUM_API_KEY: ${{ secrets.GRADIUM_API_KEY }}
           GRADIUM_VOICE_ID: ${{ secrets.GRADIUM_VOICE_ID }}
           GRADIUM_API_REGION: ${{ secrets.GRADIUM_API_REGION }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+          LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APP_API_KEY: ${{ secrets.APP_API_KEY }}
         run: |
           sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
             --stack-name cardio-backend \
@@ -49,4 +55,4 @@ jobs:
             --region us-east-1 \
             --resolve-s3 \
             --resolve-image-repos \
-            --parameter-overrides "GradiumApiKey=${GRADIUM_API_KEY} GradiumVoiceId=${GRADIUM_VOICE_ID:-OceLYI_PPbqsdgdV} GradiumApiRegion=${GRADIUM_API_REGION:-us}"
+            --parameter-overrides "GradiumApiKey=${GRADIUM_API_KEY} GradiumVoiceId=${GRADIUM_VOICE_ID:-OceLYI_PPbqsdgdV} GradiumApiRegion=${GRADIUM_API_REGION:-us} GoogleApiKey=${GOOGLE_API_KEY} LangchainApiKey=${LANGCHAIN_API_KEY} LangchainProject=${LANGCHAIN_PROJECT:-orsushealth-dr-bear} SupabaseUrl=${SUPABASE_URL} SupabaseServiceRoleKey=${SUPABASE_SERVICE_ROLE_KEY} AppApiKey=${APP_API_KEY}"

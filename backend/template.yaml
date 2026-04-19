@@ -17,6 +17,34 @@ Parameters:
     AllowedValues:
       - us
       - eu
+  GoogleApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Google Gemini API key for Dr. Bear chat agent
+  LangchainApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: LangSmith API key for tracing
+  LangchainProject:
+    Type: String
+    Default: 'orsushealth-dr-bear'
+    Description: LangSmith project name
+  SupabaseUrl:
+    Type: String
+    Default: ''
+    Description: Supabase project URL
+  SupabaseServiceRoleKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Supabase service role key (server-side only)
+  AppApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Secret key required for frontend to access this backend
 
 Globals:
   Function:
@@ -35,23 +63,19 @@ Resources:
           GRADIUM_API_KEY: !Ref GradiumApiKey
           GRADIUM_VOICE_ID: !Ref GradiumVoiceId
           GRADIUM_API_REGION: !Ref GradiumApiRegion
-      Events:
-        RootApi:
-          Type: HttpApi
-          Properties:
-            Path: /
-            Method: get
-        PredictApi:
-          Type: HttpApi
-          Properties:
-            Path: /predict
-            Method: post
-        # Catch-all for any other routes FastAPI handles
-        CatchAll:
-          Type: HttpApi
-          Properties:
-            Path: /{proxy+}
-            Method: ANY
+          GOOGLE_API_KEY: !Ref GoogleApiKey
+          LANGCHAIN_TRACING_V2: 'true'
+          LANGCHAIN_API_KEY: !Ref LangchainApiKey
+          LANGCHAIN_PROJECT: !Ref LangchainProject
+          SUPABASE_URL: !Ref SupabaseUrl
+          SUPABASE_SERVICE_ROLE_KEY: !Ref SupabaseServiceRoleKey
+          APP_API_KEY: !Ref AppApiKey
+          # Enable streaming in the Web Adapter
+          AWS_LWA_INVOKE_MODE: response_stream
+      # Enable Lambda Function URL for Streaming
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: .
@@ -59,8 +83,8 @@ Resources:
 
 Outputs:
   ApiUrl:
-    Description: URL of the deployed API
-    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Description: Lambda Function URL
+    Value: !GetAtt HeartDiseasePredictFunctionUrl.FunctionUrl
   HeartDiseasePredictFunction:
     Description: Lambda function ARN
     Value: !GetAtt HeartDiseasePredictFunction.Arn
