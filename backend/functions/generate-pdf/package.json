@@ -1,0 +1,9 @@
+{
+  "name": "generate-pdf",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@sparticuz/chromium": "^121.0.0",
+    "puppeteer-core": "^21.0.0"
+  }
+}
