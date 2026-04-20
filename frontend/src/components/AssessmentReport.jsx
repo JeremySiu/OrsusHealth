@@ -152,7 +152,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
              <div className="flex flex-col items-center justify-center h-full text-zinc-500 space-y-4">
                 <AlertCircle className="w-8 h-8" />
                 <p>Your browser does not support inline PDFs.</p>
-                <a href={pdfUrl} download="Cardio_Assessment_Report.pdf" className="bg-white text-zinc-900 px-4 py-2 rounded-lg shadow font-medium">Download PDF</a>
+                <a href={pdfUrl} download="Cardio_Assessment_Report.pdf" className="bg-white text-zinc-900 px-4 py-2 rounded-lg shadow font-medium" style={{ padding: "0.5rem" }}>Download PDF</a>
              </div>
            </object>
         </div>
