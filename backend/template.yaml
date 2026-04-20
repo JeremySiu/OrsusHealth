@@ -99,14 +99,6 @@ Resources:
           NODE_ENV: production
       FunctionUrlConfig:
         AuthType: NONE
-        Cors:
-          AllowOrigins:
-            - '*'
-          AllowMethods:
-            - POST
-            - OPTIONS
-          AllowHeaders:
-            - Content-Type
 
 Outputs:
   ApiUrl:
