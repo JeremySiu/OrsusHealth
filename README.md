@@ -76,6 +76,8 @@ After that, every push to `main` that touches `backend/` will auto-deploy.
 | GET    | `/`        | Health check                         |
 | POST   | `/predict` | Predict heart disease probability    |
 
+SAM also outputs a `GeneratePdfUrl` value for the dedicated PDF Lambda Function URL. Set that URL in the frontend as `VITE_GENERATE_PDF_URL` after deployment.
+
 ### Example Request
 ```bash
 curl -X POST https://YOUR_API_URL/predict \
