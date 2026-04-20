@@ -2,6 +2,12 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
 let browserInstance = null;
+const APP_API_KEY = process.env.APP_API_KEY || '';
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,x-api-key',
+};
 
 const getBrowser = async () => {
   if (browserInstance) return browserInstance;
@@ -33,11 +39,21 @@ export const handler = async (event) => {
     if (event.requestContext?.http?.method === 'OPTIONS') {
       return {
         statusCode: 204,
+        headers: CORS_HEADERS,
+      };
+    }
+
+    const headers = event.headers || {};
+    const providedApiKey = headers['x-api-key'] || headers['X-Api-Key'] || headers['X-API-Key'];
+
+    if (!APP_API_KEY || providedApiKey !== APP_API_KEY) {
+      return {
+        statusCode: 403,
         headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST,OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS,
         },
+        body: JSON.stringify({ error: 'Forbidden' }),
       };
     }
 
@@ -49,7 +65,7 @@ export const handler = async (event) => {
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...CORS_HEADERS,
         },
         body: JSON.stringify({ error: 'Missing or invalid html field in request body' }),
       };
@@ -89,7 +105,7 @@ export const handler = async (event) => {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename="report.pdf"',
-        'Access-Control-Allow-Origin': '*',
+        ...CORS_HEADERS,
       },
       body: pdf.toString('base64'),
       isBase64Encoded: true,
@@ -100,7 +116,7 @@ export const handler = async (event) => {
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        ...CORS_HEADERS,
       },
       body: JSON.stringify({ error: 'PDF generation failed', detail: err.message }),
     };
