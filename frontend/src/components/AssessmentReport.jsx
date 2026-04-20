@@ -38,6 +38,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'x-api-key': import.meta.env.VITE_BACKEND_API_KEY,
           },
           body: JSON.stringify({ html: htmlString }),
         });

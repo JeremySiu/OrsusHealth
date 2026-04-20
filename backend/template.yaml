@@ -97,6 +97,7 @@ Resources:
       Environment:
         Variables:
           NODE_ENV: production
+          APP_API_KEY: !Ref AppApiKey
       FunctionUrlConfig:
         AuthType: NONE
 
