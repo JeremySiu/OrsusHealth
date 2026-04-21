@@ -2,7 +2,6 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
 let browserInstance = null;
-const APP_API_KEY = process.env.APP_API_KEY || '';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST,OPTIONS',
@@ -36,6 +35,8 @@ export const handler = async (event) => {
   let page = null;
 
   try {
+    const appApiKey = process.env.APP_API_KEY || '';
+
     if (event.requestContext?.http?.method === 'OPTIONS') {
       return {
         statusCode: 204,
@@ -46,7 +47,7 @@ export const handler = async (event) => {
     const headers = event.headers || {};
     const providedApiKey = headers['x-api-key'] || headers['X-Api-Key'] || headers['X-API-Key'];
 
-    if (!APP_API_KEY || providedApiKey !== APP_API_KEY) {
+    if (!appApiKey || providedApiKey !== appApiKey) {
       return {
         statusCode: 403,
         headers: {
@@ -91,13 +92,6 @@ export const handler = async (event) => {
     const pdf = await page.pdf({
       format: 'Letter',
       printBackground: true,
-      margin: {
-        top: '0.5in',
-        right: '0.5in',
-        bottom: '0.5in',
-        left: '0.5in',
-      },
-      pageRanges: '1',
     });
 
     return {

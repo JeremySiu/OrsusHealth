@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "dev": "node dev-server.mjs"
+  },
   "dependencies": {
     "@sparticuz/chromium": "^121.0.0",
-    "puppeteer-core": "^21.0.0"
+    "dotenv": "^17.2.3",
+    "puppeteer-core": "^24.42.0"
   }
 }
