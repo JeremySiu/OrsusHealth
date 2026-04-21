@@ -87,13 +87,11 @@ Resources:
     Properties:
       CodeUri: functions/generate-pdf/
       Handler: handler.handler
-      Runtime: nodejs18.x
+      Runtime: nodejs24.x
       Architectures:
         - x86_64
       MemorySize: 1024
       Timeout: 30
-      Layers:
-        - arn:aws:lambda:us-east-1:764866452798:layer:chrome-aws-lambda:50
       Environment:
         Variables:
           NODE_ENV: production
