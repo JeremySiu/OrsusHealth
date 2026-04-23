@@ -6,6 +6,7 @@ import { createReportSignedUrl, uploadReportPdf } from '../lib/reportStorage';
 
 export default function AssessmentReport({ result, formData, onRestart }) {
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [storedPdfUrl, setStoredPdfUrl] = useState(null);
   const [generating, setGenerating] = useState(true);
   const { user } = useAuth();
 
@@ -22,6 +23,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
     const depsHash = JSON.stringify({ result, formData });
     if (window.__cachedPdfHash === depsHash && window.__cachedPdfUrl) {
       setPdfUrl(window.__cachedPdfUrl);
+      setStoredPdfUrl(window.__cachedStoredPdfUrl || null);
       setGenerating(false);
       return undefined;
     }
@@ -56,7 +58,14 @@ export default function AssessmentReport({ result, formData, onRestart }) {
         }
 
         const blob = await response.blob();
-        let resolvedPdfUrl = null;
+        const previewUrl = URL.createObjectURL(blob);
+        revokedUrl = previewUrl;
+
+        window.__cachedPdfHash = depsHash;
+        window.__cachedPdfUrl = previewUrl;
+
+        setPdfUrl(previewUrl);
+        setStoredPdfUrl(null);
 
         if (user) {
           try {
@@ -66,22 +75,13 @@ export default function AssessmentReport({ result, formData, onRestart }) {
               formData,
               result,
             });
-            resolvedPdfUrl = await createReportSignedUrl(filePath);
+            const signedUrl = await createReportSignedUrl(filePath);
+            window.__cachedStoredPdfUrl = signedUrl;
+            setStoredPdfUrl(signedUrl);
           } catch (saveErr) {
             console.error('Supabase save error:', saveErr);
           }
         }
-
-        if (!resolvedPdfUrl) {
-          const url = URL.createObjectURL(blob);
-          revokedUrl = url;
-          resolvedPdfUrl = url;
-        }
-
-        window.__cachedPdfHash = depsHash;
-        window.__cachedPdfUrl = resolvedPdfUrl;
-
-        setPdfUrl(resolvedPdfUrl);
       } catch (err) {
         console.error('PDF download error:', err);
       } finally {
@@ -130,7 +130,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
               <AlertCircle className="w-8 h-8" />
               <p>Your browser does not support inline PDFs.</p>
               <a
-                href={pdfUrl}
+                href={storedPdfUrl || pdfUrl}
                 download="Cardio_Assessment_Report.pdf"
                 className="bg-white text-zinc-900 px-4 py-2 rounded-lg shadow font-medium"
                 style={{ padding: '0.5rem' }}
