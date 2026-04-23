@@ -87,10 +87,10 @@ Resources:
     Properties:
       CodeUri: functions/generate-pdf/
       Handler: handler.handler
-      Runtime: nodejs24.x
+      Runtime: nodejs22.x
       Architectures:
         - x86_64
-      MemorySize: 1024
+      MemorySize: 1600
       Timeout: 30
       Environment:
         Variables:
