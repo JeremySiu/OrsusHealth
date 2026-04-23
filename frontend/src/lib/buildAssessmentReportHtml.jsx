@@ -22,7 +22,7 @@ export function buildAssessmentReportHtml({ result, formData }) {
     '<title>Cardiovascular Health Assessment</title>',
     '<style>',
     'html, body { margin: 0; padding: 0; background: #ffffff; }',
-    'body { width: 816px; }',
+    'body { width: 720px; }',
     '*, *::before, *::after { box-sizing: border-box; }',
     'a { color: inherit; }',
     '</style>',
