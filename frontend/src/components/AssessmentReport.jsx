@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { buildAssessmentReportHtml } from '../lib/buildAssessmentReportHtml';
+import { createReportSignedUrl, uploadReportPdf } from '../lib/reportStorage';
 
 export default function AssessmentReport({ result, formData, onRestart }) {
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -56,48 +56,32 @@ export default function AssessmentReport({ result, formData, onRestart }) {
         }
 
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        revokedUrl = url;
-
-        window.__cachedPdfHash = depsHash;
-        window.__cachedPdfUrl = url;
-
-        setPdfUrl(url);
+        let resolvedPdfUrl = null;
 
         if (user) {
           try {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const filePath = `${user.id}/${timestamp}.pdf`;
-
-            const { error: uploadError } = await supabase.storage.from('reports').upload(filePath, blob, {
-              contentType: 'application/pdf',
-              upsert: false,
+            const { filePath } = await uploadReportPdf({
+              userId: user.id,
+              blob,
+              formData,
+              result,
             });
-
-            if (uploadError) {
-              console.error('PDF upload failed:', uploadError);
-            } else {
-              const { error: insertError } = await supabase.from('health_records').insert({
-                user_id: user.id,
-                record_type: 'cardiovascular_assessment',
-                value: {
-                  form_data: formData,
-                  prediction: {
-                    heart_disease_probability: result.heart_disease_probability,
-                    top_influencing_features: result.top_influencing_features,
-                  },
-                  report_path: filePath,
-                },
-              });
-
-              if (insertError) {
-                console.error('Health record insert failed:', insertError);
-              }
-            }
+            resolvedPdfUrl = await createReportSignedUrl(filePath);
           } catch (saveErr) {
             console.error('Supabase save error:', saveErr);
           }
         }
+
+        if (!resolvedPdfUrl) {
+          const url = URL.createObjectURL(blob);
+          revokedUrl = url;
+          resolvedPdfUrl = url;
+        }
+
+        window.__cachedPdfHash = depsHash;
+        window.__cachedPdfUrl = resolvedPdfUrl;
+
+        setPdfUrl(resolvedPdfUrl);
       } catch (err) {
         console.error('PDF download error:', err);
       } finally {

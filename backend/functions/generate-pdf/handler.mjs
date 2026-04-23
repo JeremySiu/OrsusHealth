@@ -92,12 +92,11 @@ export const handler = async (event) => {
       format: 'Letter',
       printBackground: true,
       margin: {
-        top: '0.5in',
+        top: '1in',
         right: '0.5in',
         bottom: '0.5in',
         left: '0.5in',
       },
-      pageRanges: '1',
     });
 
     return {

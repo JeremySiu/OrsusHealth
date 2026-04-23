@@ -4,6 +4,7 @@ import { Badge } from './ui/badge';
 import { FileText, Download, Eye, Calendar, Heart, Activity, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { createReportSignedUrl } from '../lib/reportStorage';
 
 export default function MyReports() {
   const { user } = useAuth();
@@ -43,21 +44,17 @@ export default function MyReports() {
 
     setDownloadingId(report.id);
     try {
-      const { data, error } = await supabase.storage
-        .from('reports')
-        .download(reportPath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
+      const dateStr = new Date(report.recorded_at).toLocaleDateString('en-CA');
+      const filename = `Cardio_Assessment_${dateStr}.pdf`;
+      const url = await createReportSignedUrl(reportPath, { download: filename });
       const a = document.createElement('a');
       a.href = url;
-      const dateStr = new Date(report.recorded_at).toLocaleDateString('en-CA');
-      a.download = `Cardio_Assessment_${dateStr}.pdf`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
     } finally {
@@ -71,13 +68,7 @@ export default function MyReports() {
 
     setViewingId(report.id);
     try {
-      const { data, error } = await supabase.storage
-        .from('reports')
-        .download(reportPath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
+      const url = await createReportSignedUrl(reportPath);
       window.open(url, '_blank');
     } catch (err) {
       console.error('View failed:', err);
