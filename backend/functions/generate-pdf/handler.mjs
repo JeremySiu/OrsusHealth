@@ -25,8 +25,12 @@ const getBrowser = async () => {
       '--no-first-run',
     ],
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
-    defaultViewport: chromium.defaultViewport,
+    headless: 'shell',
+    defaultViewport: {
+      width: 1280,
+      height: 720,
+      deviceScaleFactor: 1,
+    },
   });
 
   return browserInstance;
