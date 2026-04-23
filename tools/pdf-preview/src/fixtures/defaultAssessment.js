@@ -19,8 +19,5 @@ export const defaultResult = {
     { feature: 'Oldpeak', shap_value: 0.84 },
     { feature: 'Cholesterol', shap_value: 0.62 },
     { feature: 'RestingBP', shap_value: 0.44 },
-    { feature: 'ST_Slope_Flat', shap_value: 0.39 },
-    { feature: 'MaxHR', shap_value: -0.36 },
-    { feature: 'ExerciseAngina', shap_value: -0.22 },
   ],
 };

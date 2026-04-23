@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, FileText, FlaskConical, Play, RefreshCcw, Stethoscope } from 'lucide-react';
-import { buildAssessmentReportHtml } from '../../../frontend/src/lib/buildAssessmentReportHtml.jsx';
 import { defaultFormData, defaultResult } from './fixtures/defaultAssessment.js';
 
 const DEFAULT_MODE = (import.meta.env.VITE_DEFAULT_MODE || 'fixture').trim().toLowerCase() === 'live' ? 'live' : 'fixture';
@@ -26,6 +25,12 @@ function parseJson(label, value) {
 
 function normalizeApiBaseUrl(value) {
   return value.trim().replace(/\/+$/, '');
+}
+
+async function loadBuildAssessmentReportHtml() {
+  const moduleUrl = new URL('../../../frontend/src/lib/buildAssessmentReportHtml.jsx', import.meta.url);
+  const module = await import(/* @vite-ignore */ `${moduleUrl.href}?t=${Date.now()}`);
+  return module.buildAssessmentReportHtml;
 }
 
 function PdfViewer({ pdfUrl }) {
@@ -72,6 +77,8 @@ export default function App() {
   const [error, setError] = useState('');
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const isGeneratingRef = useRef(false);
+  const queueAutoGenerateRef = useRef(false);
 
   const hasPredictConfig = useMemo(() => Boolean(normalizeApiBaseUrl(config.predictApiBaseUrl)), [config.predictApiBaseUrl]);
 
@@ -85,6 +92,10 @@ export default function App() {
       return URL.createObjectURL(blob);
     });
   };
+
+  useEffect(() => {
+    isGeneratingRef.current = isGenerating;
+  }, [isGenerating]);
 
   const requestPdf = async (html) => {
     const endpoint = config.pdfGeneratorUrl.trim();
@@ -162,6 +173,12 @@ export default function App() {
   };
 
   const handleFixtureGenerate = async () => {
+    if (isGeneratingRef.current) {
+      queueAutoGenerateRef.current = true;
+      return;
+    }
+
+    isGeneratingRef.current = true;
     setIsGenerating(true);
     setError('');
     setStatus('Validating fixture JSON...');
@@ -184,6 +201,7 @@ export default function App() {
 
     try {
       setStatus('Rendering assessment HTML...');
+      const buildAssessmentReportHtml = await loadBuildAssessmentReportHtml();
       const html = buildAssessmentReportHtml({
         formData: parsedForm.value,
         result: parsedResult.value,
@@ -197,7 +215,14 @@ export default function App() {
       setError(requestError.message);
       setStatus('Fixture generation failed');
     } finally {
+      isGeneratingRef.current = false;
       setIsGenerating(false);
+      if (queueAutoGenerateRef.current) {
+        queueAutoGenerateRef.current = false;
+        window.setTimeout(() => {
+          handleFixtureGenerate();
+        }, 50);
+      }
     }
   };
 
@@ -220,6 +245,7 @@ export default function App() {
       setLastPredictionJson(prettyJson(prediction));
 
       setStatus('Rendering assessment HTML...');
+      const buildAssessmentReportHtml = await loadBuildAssessmentReportHtml();
       const html = buildAssessmentReportHtml({
         formData: parsedForm.value,
         result: prediction,
@@ -244,6 +270,27 @@ export default function App() {
     setError('');
     setStatus('Fixture payloads reset');
   };
+
+  useEffect(() => {
+    if (!import.meta.hot) {
+      return undefined;
+    }
+
+    const handleFrontendSrcUpdated = () => {
+      if (mode !== 'fixture') {
+        return;
+      }
+
+      setStatus('Template updated. Regenerating fixture PDF...');
+      handleFixtureGenerate();
+    };
+
+    import.meta.hot.on('frontend-src-updated', handleFrontendSrcUpdated);
+
+    return () => {
+      import.meta.hot.off?.('frontend-src-updated', handleFrontendSrcUpdated);
+    };
+  }, [mode, formJson, resultJson, config]);
 
   return (
     <div className="page-shell">

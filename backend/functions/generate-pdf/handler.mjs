@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
+import fs from 'node:fs';
 
 let browserInstance = null;
 const CORS_HEADERS = {
@@ -8,10 +9,30 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type,x-api-key',
 };
 
-const getBrowser = async () => {
-  if (browserInstance) return browserInstance;
+const LOCAL_BROWSER_CANDIDATES = [
+  process.env.CHROME_EXECUTABLE_PATH,
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+].filter(Boolean);
 
-  browserInstance = await puppeteer.launch({
+const resolveLaunchOptions = async () => {
+  const isLambdaRuntime = Boolean(process.env.AWS_EXECUTION_ENV || process.env.LAMBDA_TASK_ROOT);
+
+  if (!isLambdaRuntime) {
+    const localExecutablePath = LOCAL_BROWSER_CANDIDATES.find((candidate) => fs.existsSync(candidate));
+
+    if (localExecutablePath) {
+      return {
+        args: ['--disable-gpu', '--no-first-run'],
+        executablePath: localExecutablePath,
+        headless: true,
+      };
+    }
+  }
+
+  return {
     args: [
       ...chromium.args,
       '--no-sandbox',
@@ -26,7 +47,13 @@ const getBrowser = async () => {
     executablePath: await chromium.executablePath(),
     headless: chromium.headless,
     defaultViewport: chromium.defaultViewport,
-  });
+  };
+};
+
+const getBrowser = async () => {
+  if (browserInstance) return browserInstance;
+
+  browserInstance = await puppeteer.launch(await resolveLaunchOptions());
 
   return browserInstance;
 };
@@ -92,7 +119,14 @@ export const handler = async (event) => {
     const pdf = await page.pdf({
       format: 'Letter',
       printBackground: true,
+      margin: {
+        top: '1in',
+        right: '0.5in',
+        bottom: '0.5in',
+        left: '0.5in',
+      },
     });
+    const pdfBuffer = Buffer.from(pdf);
 
     return {
       statusCode: 200,
@@ -101,7 +135,7 @@ export const handler = async (event) => {
         'Content-Disposition': 'attachment; filename="report.pdf"',
         ...CORS_HEADERS,
       },
-      body: pdf.toString('base64'),
+      body: pdfBuffer.toString('base64'),
       isBase64Encoded: true,
     };
   } catch (err) {
