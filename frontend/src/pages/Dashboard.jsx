@@ -10,6 +10,7 @@ import { TooltipProvider } from '../components/ui/tooltip';
 import { DashboardStats } from '../components/DashboardStats';
 import AssessmentForm from '../components/AssessmentForm';
 import MyReports from '../components/MyReports';
+import MyTrends from '../components/MyTrends';
 import { useIsMobile } from '../hooks/use-mobile';
 
 const DASHBOARD_GRAIN = {
@@ -621,8 +622,9 @@ function Dashboard() {
                       >
                         {showContentPanel && activeTabId === 'overview' && <DashboardStats user={user} />}
                         {showContentPanel && activeTabId === 'assessment' && <AssessmentForm />}
+                        {showContentPanel && activeTabId === 'trends' && <MyTrends />}
                         {showContentPanel && activeTabId === 'reports' && <MyReports />}
-                        {showContentPanel && activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'reports' && (
+                        {showContentPanel && activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'trends' && activeTabId !== 'reports' && (
                           <div className="h-full w-full overflow-y-auto flex flex-col justify-center p-6 md:p-8 rounded-xl">
                             <h2
                               className="text-lg font-semibold tracking-tight text-zinc-900"
