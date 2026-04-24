@@ -620,23 +620,48 @@ function Dashboard() {
                           transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)'
                         }}
                       >
-                        {showContentPanel && activeTabId === 'overview' && <DashboardStats user={user} />}
-                        {showContentPanel && activeTabId === 'assessment' && <AssessmentForm />}
-                        {showContentPanel && activeTabId === 'trends' && <MyTrends />}
-                        {showContentPanel && activeTabId === 'reports' && <MyReports />}
-                        {showContentPanel && activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'trends' && activeTabId !== 'reports' && (
-                          <div className="h-full w-full overflow-y-auto flex flex-col justify-center p-6 md:p-8 rounded-xl">
-                            <h2
-                              className="text-lg font-semibold tracking-tight text-zinc-900"
-                              style={{ fontFamily: 'var(--font-heading)' }}
-                            >
-                              {getTabTitle(activeTabId)}
-                            </h2>
-                            <p className="mt-1 text-sm text-zinc-600">
-                              Content for {getTabTitle(activeTabId)} coming soon.
-                            </p>
+                        {showContentPanel ? (
+                          <div
+                            key={activeTabId}
+                            style={{
+                              height: '100%',
+                              width: '100%',
+                              animation: 'dashboard-content-in 420ms cubic-bezier(0.16, 1, 0.3, 1)',
+                            }}
+                          >
+                            <style>
+                              {`
+                                @keyframes dashboard-content-in {
+                                  0% {
+                                    opacity: 0;
+                                    transform: translateY(14px) scale(0.99);
+                                  }
+                                  100% {
+                                    opacity: 1;
+                                    transform: translateY(0) scale(1);
+                                  }
+                                }
+                              `}
+                            </style>
+                            {activeTabId === 'overview' && <DashboardStats user={user} />}
+                            {activeTabId === 'assessment' && <AssessmentForm />}
+                            {activeTabId === 'trends' && <MyTrends />}
+                            {activeTabId === 'reports' && <MyReports />}
+                            {activeTabId !== 'overview' && activeTabId !== 'assessment' && activeTabId !== 'trends' && activeTabId !== 'reports' && (
+                              <div className="h-full w-full overflow-y-auto flex flex-col justify-center rounded-xl" style={{ padding: '1.5rem' }}>
+                                <h2
+                                  className="text-lg font-semibold tracking-tight text-zinc-900"
+                                  style={{ fontFamily: 'var(--font-heading)' }}
+                                >
+                                  {getTabTitle(activeTabId)}
+                                </h2>
+                                <p className="text-sm text-zinc-600" style={{ marginTop: '0.25rem' }}>
+                                  Content for {getTabTitle(activeTabId)} coming soon.
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ) : null}
                       </div>
 
                       {/* DR BEAR ANIMATION CONTAINER */}
