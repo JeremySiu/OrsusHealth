@@ -30,7 +30,7 @@ export async function uploadReportPdf({ userId, blob, formData, result }) {
 }
 
 export async function createReportSignedUrl(reportPath, options = {}) {
-  const { expiresIn = 300, download } = options;
+  const { expiresIn = 3600, download } = options;
   const signedUrlOptions = download ? { download } : undefined;
 
   const { data, error } = await supabase.storage
