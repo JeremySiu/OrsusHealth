@@ -45,14 +45,22 @@ export default function MyReports() {
       const dateStr = new Date(report.recordedAt).toLocaleDateString('en-CA');
       const filename = `Cardio_Assessment_${dateStr}.pdf`;
       const url = await createReportSignedUrl(reportPath, { download: filename });
+      
+      // Fetch the blob instead of relying on link click (fixes mobile Chrome popup blocker issues)
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch file');
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
       const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
+      a.href = objectUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      
+      // Clean up slightly later to ensure download starts
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (err) {
       console.error('Download failed:', err);
     } finally {
@@ -85,17 +93,27 @@ export default function MyReports() {
 
   const handleViewerDownload = async () => {
     if (!viewerReport?.reportPath) return;
-    const dateStr = new Date(viewerReport.recordedAt).toLocaleDateString('en-CA');
-    const filename = `Cardio_Assessment_${dateStr}.pdf`;
-    const url = await createReportSignedUrl(viewerReport.reportPath, { download: filename });
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const dateStr = new Date(viewerReport.recordedAt).toLocaleDateString('en-CA');
+      const filename = `Cardio_Assessment_${dateStr}.pdf`;
+      const url = await createReportSignedUrl(viewerReport.reportPath, { download: filename });
+      
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch file');
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err) {
+      console.error('Viewer download failed:', err);
+    }
   };
 
   const getRiskLevel = (probability) => {

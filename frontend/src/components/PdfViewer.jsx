@@ -71,6 +71,9 @@ export default function PdfViewer({ file, showLoadingSpinner = true }) {
     const node = containerRef.current;
     if (!node) return undefined;
 
+    let timeoutId = null;
+    let isFirst = true;
+
     const observer = new ResizeObserver(() => {
       // Use requestAnimationFrame to avoid "ResizeObserver loop limit exceeded" errors
       window.requestAnimationFrame(() => {
@@ -78,13 +81,25 @@ export default function PdfViewer({ file, showLoadingSpinner = true }) {
         // Use clientWidth to prevent horizontal scrollbars (ignores vertical scrollbar width natively)
         const width = node.clientWidth;
         if (width > 0) {
-          setContainerWidth(width);
+          if (isFirst) {
+            setContainerWidth(width);
+            isFirst = false;
+          } else {
+            // Debounce subsequent updates to prevent spamming react-pdf during window drag
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+              setContainerWidth(width);
+            }, 150);
+          }
         }
       });
     });
 
     observer.observe(node);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const onDocumentLoadSuccess = useCallback(({ numPages: pages }) => {
@@ -129,14 +144,16 @@ export default function PdfViewer({ file, showLoadingSpinner = true }) {
           onLoadError={onDocumentLoadError}
           loading={null}
         >
-          {numPages &&
+          {numPages && containerWidth &&
             Array.from({ length: numPages }, (_, i) => (
               <Page
                 key={`page-${i + 1}`}
                 pageNumber={i + 1}
-                width={containerWidth || undefined}
+                width={containerWidth}
                 loading={null}
                 className="pdf-viewer-page"
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
               />
             ))}
         </Document>
