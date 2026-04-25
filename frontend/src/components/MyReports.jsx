@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { Badge } from './ui/badge';
 import { FileText, Download, Eye, Calendar, Heart, Activity, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { fetchAssessmentRecords, normalizeAssessmentHistory } from '../lib/assessmentHistory';
+import { createReportSignedUrl } from '../lib/reportStorage';
 
 export default function MyReports() {
   const { user } = useAuth();
@@ -17,15 +18,8 @@ export default function MyReports() {
 
     async function fetchReports() {
       try {
-        const { data: records, error } = await supabase
-          .from('health_records')
-          .select('id, value, recorded_at, created_at')
-          .eq('user_id', user.id)
-          .eq('record_type', 'cardiovascular_assessment')
-          .order('recorded_at', { ascending: false });
-
-        if (error) throw error;
-        setReports(records || []);
+        const records = await fetchAssessmentRecords(user.id, { ascending: false });
+        setReports(normalizeAssessmentHistory(records));
       } catch (err) {
         console.error('Error fetching reports:', err);
         setReports([]);
@@ -38,26 +32,22 @@ export default function MyReports() {
   }, [user]);
 
   const handleDownload = async (report) => {
-    const reportPath = report.value?.report_path;
+    const reportPath = report.reportPath;
     if (!reportPath) return;
 
     setDownloadingId(report.id);
     try {
-      const { data, error } = await supabase.storage
-        .from('reports')
-        .download(reportPath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
+      const dateStr = new Date(report.recordedAt).toLocaleDateString('en-CA');
+      const filename = `Cardio_Assessment_${dateStr}.pdf`;
+      const url = await createReportSignedUrl(reportPath, { download: filename });
       const a = document.createElement('a');
       a.href = url;
-      const dateStr = new Date(report.recorded_at).toLocaleDateString('en-CA');
-      a.download = `Cardio_Assessment_${dateStr}.pdf`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
     } finally {
@@ -66,20 +56,23 @@ export default function MyReports() {
   };
 
   const handleView = async (report) => {
-    const reportPath = report.value?.report_path;
+    const reportPath = report.reportPath;
     if (!reportPath) return;
 
     setViewingId(report.id);
+    const pendingWindow = window.open('', '_blank', 'noopener,noreferrer');
+
     try {
-      const { data, error } = await supabase.storage
-        .from('reports')
-        .download(reportPath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      window.open(url, '_blank');
+      const url = await createReportSignedUrl(reportPath);
+      if (pendingWindow) {
+        pendingWindow.location.href = url;
+      } else {
+        window.location.href = url;
+      }
     } catch (err) {
+      if (pendingWindow) {
+        pendingWindow.close();
+      }
       console.error('View failed:', err);
     } finally {
       setViewingId(null);
@@ -131,11 +124,10 @@ export default function MyReports() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700" style = {{marginLeft: "1rem", marginRight: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))"}}>
           {reports.map((report, idx) => {
-            const form = report.value?.form_data || {};
-            const prediction = report.value?.prediction || {};
-            const probability = prediction.heart_disease_probability;
+            const form = report.formData || {};
+            const probability = report.riskProbability;
             const risk = getRiskLevel(probability);
-            const recordedDate = new Date(report.recorded_at);
+            const recordedDate = new Date(report.recordedAt);
             const formattedDate = recordedDate.toLocaleDateString('en-US', {
               year: 'numeric', month: 'long', day: 'numeric',
             });
@@ -199,7 +191,7 @@ export default function MyReports() {
                 <CardFooter className="border-t border-black/5 bg-white/20 px-4 py-3 flex items-center gap-4" style={{paddingTop: "0.5rem"}}>
                   <button
                     onClick={() => handleView(report)}
-                    disabled={viewingId === report.id || !report.value?.report_path}
+                    disabled={viewingId === report.id || !report.reportPath}
                     className="flex items-center gap-2 text-xs font-medium text-teal-700 hover:text-teal-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {viewingId === report.id ? (
@@ -212,7 +204,7 @@ export default function MyReports() {
                   <div className="w-px h-4 bg-black/10" />
                   <button
                     onClick={() => handleDownload(report)}
-                    disabled={downloadingId === report.id || !report.value?.report_path}
+                    disabled={downloadingId === report.id || !report.reportPath}
                     className="flex items-center gap-2 text-xs font-medium text-teal-700 hover:text-teal-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {downloadingId === report.id ? (

@@ -26,7 +26,11 @@ const getBrowser = async () => {
     ],
     executablePath: await chromium.executablePath(),
     headless: chromium.headless,
-    defaultViewport: chromium.defaultViewport,
+    defaultViewport: {
+      width: 1280,
+      height: 720,
+      deviceScaleFactor: 1,
+    },
   });
 
   return browserInstance;
@@ -92,12 +96,11 @@ export const handler = async (event) => {
       format: 'Letter',
       printBackground: true,
       margin: {
-        top: '0.5in',
+        top: '1in',
         right: '0.5in',
         bottom: '0.5in',
         left: '0.5in',
       },
-      pageRanges: '1',
     });
 
     return {
@@ -107,7 +110,7 @@ export const handler = async (event) => {
         'Content-Disposition': 'attachment; filename="report.pdf"',
         ...CORS_HEADERS,
       },
-      body: pdf.toString('base64'),
+      body: Buffer.from(pdf).toString('base64'),
       isBase64Encoded: true,
     };
   } catch (err) {

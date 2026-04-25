@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { buildAssessmentReportHtml } from '../lib/buildAssessmentReportHtml';
+import { createReportSignedUrl, uploadReportPdf } from '../lib/reportStorage';
 
 export default function AssessmentReport({ result, formData, onRestart }) {
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [storedPdfUrl, setStoredPdfUrl] = useState(null);
   const [generating, setGenerating] = useState(true);
   const { user } = useAuth();
 
@@ -22,6 +23,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
     const depsHash = JSON.stringify({ result, formData });
     if (window.__cachedPdfHash === depsHash && window.__cachedPdfUrl) {
       setPdfUrl(window.__cachedPdfUrl);
+      setStoredPdfUrl(window.__cachedStoredPdfUrl || null);
       setGenerating(false);
       return undefined;
     }
@@ -56,44 +58,26 @@ export default function AssessmentReport({ result, formData, onRestart }) {
         }
 
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        revokedUrl = url;
+        const previewUrl = URL.createObjectURL(blob);
+        revokedUrl = previewUrl;
 
         window.__cachedPdfHash = depsHash;
-        window.__cachedPdfUrl = url;
+        window.__cachedPdfUrl = previewUrl;
 
-        setPdfUrl(url);
+        setPdfUrl(previewUrl);
+        setStoredPdfUrl(null);
 
         if (user) {
           try {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const filePath = `${user.id}/${timestamp}.pdf`;
-
-            const { error: uploadError } = await supabase.storage.from('reports').upload(filePath, blob, {
-              contentType: 'application/pdf',
-              upsert: false,
+            const { filePath } = await uploadReportPdf({
+              userId: user.id,
+              blob,
+              formData,
+              result,
             });
-
-            if (uploadError) {
-              console.error('PDF upload failed:', uploadError);
-            } else {
-              const { error: insertError } = await supabase.from('health_records').insert({
-                user_id: user.id,
-                record_type: 'cardiovascular_assessment',
-                value: {
-                  form_data: formData,
-                  prediction: {
-                    heart_disease_probability: result.heart_disease_probability,
-                    top_influencing_features: result.top_influencing_features,
-                  },
-                  report_path: filePath,
-                },
-              });
-
-              if (insertError) {
-                console.error('Health record insert failed:', insertError);
-              }
-            }
+            const signedUrl = await createReportSignedUrl(filePath);
+            window.__cachedStoredPdfUrl = signedUrl;
+            setStoredPdfUrl(signedUrl);
           } catch (saveErr) {
             console.error('Supabase save error:', saveErr);
           }
@@ -146,7 +130,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
               <AlertCircle className="w-8 h-8" />
               <p>Your browser does not support inline PDFs.</p>
               <a
-                href={pdfUrl}
+                href={storedPdfUrl || pdfUrl}
                 download="Cardio_Assessment_Report.pdf"
                 className="bg-white text-zinc-900 px-4 py-2 rounded-lg shadow font-medium"
                 style={{ padding: '0.5rem' }}

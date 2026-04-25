@@ -31,9 +31,10 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
   return (
     <div
       style={{
-        width: '816px',
-        minHeight: '1056px',
-        padding: '48px',
+        width: '720px',
+        minHeight: '960px',
+        padding: '32px',
+        paddingTop: 0,
         boxSizing: 'border-box',
         fontFamily: 'system-ui, sans-serif',
         backgroundColor: '#ffffff',
@@ -91,11 +92,12 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
             border: '1px solid #e4e4e7',
             borderRadius: '12px',
             boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
-            padding: '16px',
+            padding: '14px',
           }}
         >
           <h2
             style={{
+              marginTop: 0,
               fontSize: '1.125rem',
               lineHeight: '1.75rem',
               fontWeight: 700,
@@ -158,7 +160,7 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
             flex: 1,
             backgroundColor: '#fafafa',
             borderRadius: '12px',
-            padding: '24px',
+            padding: '14px',
             border: '1px solid #f4f4f5',
             display: 'flex',
             flexDirection: 'column',
@@ -179,7 +181,7 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
           >
             Risk Probability Score
           </h2>
-          <div style={{ fontSize: '3.75rem', lineHeight: 1, fontWeight: 700, color: probability > 50 ? '#e11d48' : '#0d9488' }}>
+          <div style={{ fontSize: '3.15rem', lineHeight: 1, fontWeight: 700, color: probability > 50 ? '#e11d48' : '#0d9488' }}>
             {probability.toFixed(1)}%
           </div>
           <p style={{ fontSize: '0.75rem', lineHeight: '1rem', color: '#a1a1aa', marginTop: '12px', textAlign: 'center' }}>
@@ -205,7 +207,7 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
           <Activity style={{ width: '20px', height: '20px', color: '#0d9488' }} /> Key Influencing Factors
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {features.map((item, idx) => {
             const isPositive = item.shap_value > 0;
             const barWidth = `${(Math.abs(item.shap_value) / maxAbsShap) * 100}%`;
@@ -217,8 +219,8 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '8px',
-                  padding: '5px',
+                  gap: '6px',
+                  padding: '8px',
                   backgroundColor: '#fafafa',
                   borderRadius: '8px',
                   border: '1px solid rgba(0,0,0,0.05)',
@@ -305,7 +307,7 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
           <AlertCircle style={{ width: '20px', height: '20px', color: '#0d9488' }} /> Clinical Recommendations
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {features.map((item, idx) => {
             const isPositive = item.shap_value > 0;
             const clinicalData = getClinicalFacts(item.feature, isPositive);
@@ -319,7 +321,7 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
                   backgroundColor: '#ffffff',
                   borderRadius: '12px',
                   border: '1px solid #e4e4e7',
-                  padding: '5px',
+                  padding: '0px 14px',
                 }}
               >
                 <h3
@@ -330,28 +332,36 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
                     color: '#18181b',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    marginTop: "10px",
+                    marginBottom: "0px",
                   }}
                 >
                   {idx + 1}. {displayLabel} Analysis
                 </h3>
-                <p style={{ fontSize: '0.875rem', lineHeight: '1.625', color: '#3f3f46' }}>{clinicalData.fact}</p>
+                <p style={{ fontSize: '0.875rem', lineHeight: '1.625', color: '#3f3f46', marginTop: "10px", marginBottom: "5px" }}>{clinicalData.fact}</p>
                 <div
                   style={{
                     backgroundColor: '#f0fdfa',
                     borderLeft: '4px solid #14b8a6',
-                    padding: '5px',
+                    padding: '8px',
                     borderRadius: '0 6px 6px 0',
-                    marginBottom: '5px',
-                    marginTop: '5px',
-                    paddingLeft: '5px',
+                    marginBottom: '6px',
                   }}
                 >
-                  <p style={{ fontSize: '0.875rem', lineHeight: '1.25rem', color: '#134e4a', display: 'flex', gap: '8px' }}>
+                  <p
+                    style={{
+                      fontSize: '0.875rem',
+                      lineHeight: '1.25rem',
+                      color: '#134e4a',
+                      display: 'flex',
+                      gap: '5px',
+                      margin: 0,
+                    }}
+                  >
                     <strong style={{ whiteSpace: 'nowrap' }}>Recommendation:</strong> <span>{clinicalData.suggestion}</span>
                   </p>
                 </div>
-                <p style={{ fontSize: '0.75rem', lineHeight: '1rem', color: '#a1a1aa', fontStyle: 'italic' }}>
+                <p style={{ fontSize: '0.75rem', lineHeight: '1rem', color: '#a1a1aa', fontStyle: 'italic', marginTop: 0 }}>
                   Source: {clinicalData.citation}
                 </p>
               </div>
@@ -375,7 +385,7 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
         </h2>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {(() => {
-            const urlCounts = features.reduce((acc, item) => {
+            const citedSources = features.reduce((sources, item) => {
               const citationText = getClinicalFacts(item.feature, item.shap_value > 0).citation;
 
               let org = 'American Heart Association';
@@ -395,20 +405,16 @@ function AssessmentReportTemplate({ result, formData, generatedAt }) {
                 url = 'https://www.diabetes.ca/';
               }
 
-              if (!acc[url]) {
-                acc[url] = { count: 0, org, url, primaryCitation: citationText };
+              const existingSource = sources.find((source) => source.url === url);
+              if (!existingSource) {
+                sources.push({ org, url, primaryCitation: citationText });
               }
 
-              acc[url].count += 1;
-              return acc;
-            }, {});
+              return sources;
+            }, []);
 
-            const topSources = Object.values(urlCounts)
-              .sort((a, b) => b.count - a.count)
-              .slice(0, 2);
-
-            return topSources.map((source, idx) => (
-              <p key={idx} style={{ fontSize: '0.75rem', lineHeight: '1rem', color: '#52525b', overflowWrap: 'break-word' }}>
+            return citedSources.map((source, idx) => (
+              <p key={idx} style={{ fontSize: '0.75rem', lineHeight: '1rem', color: '#52525b', overflowWrap: 'break-word', marginTop: 0}}>
                 {source.org}. (n.d.). <em>{source.primaryCitation}</em>. Retrieved {generatedAt}, from{' '}
                 <a href={source.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0d9488', textDecoration: 'none' }}>
                   {source.url}

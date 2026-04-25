@@ -6,7 +6,7 @@ import {
   Heart, Activity, Droplet, Apple, 
   Stethoscope, HeartPulse, ActivitySquare, User
 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
+import { fetchAssessmentRecords, normalizeAssessmentHistory } from '../lib/assessmentHistory';
 
 const STATS_MAP = {
   ChestPainType: {
@@ -115,19 +115,11 @@ export function DashboardStats({ user }) {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const { data: records, error } = await supabase
-          .from('health_records')
-          .select('value')
-          .eq('user_id', user.id)
-          .eq('record_type', 'cardiovascular_assessment')
-          .order('recorded_at', { ascending: false })
-          .limit(1);
-
-        if (error) throw error;
-        if (records && records.length > 0) {
-          const record = records[0].value;
-          const form = record.form_data || {};
-          const prediction = record.prediction || {};
+        const records = await fetchAssessmentRecords(user.id, { ascending: false });
+        const normalizedRecords = normalizeAssessmentHistory(records);
+        if (normalizedRecords.length > 0) {
+          const latestRecord = normalizedRecords[0];
+          const form = latestRecord.formData || {};
 
           // Flatten into the shape the dashboard cards expect
           setData({
@@ -142,7 +134,7 @@ export function DashboardStats({ user }) {
             ExerciseAngina: form.ExerciseAngina,
             Oldpeak: form.Oldpeak,
             ST_Slope: form.ST_Slope,
-            HeartDisease: prediction.heart_disease_probability ?? null,
+            HeartDisease: latestRecord.riskProbability,
           });
         } else {
           setData(null);
