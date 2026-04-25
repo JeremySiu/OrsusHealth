@@ -8,6 +8,7 @@ import PdfViewer from './PdfViewer';
 export default function AssessmentReport({ result, formData, onRestart }) {
   const [pdfData, setPdfData] = useState(null);
   const [generating, setGenerating] = useState(true);
+  const [pdfError, setPdfError] = useState(null);
   const { user } = useAuth();
 
   const isError = result.error !== undefined;
@@ -80,6 +81,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
         }
       } catch (err) {
         console.error('PDF generation error:', err);
+        setPdfError(err.message || String(err));
       } finally {
         setGenerating(false);
       }
@@ -120,9 +122,14 @@ export default function AssessmentReport({ result, formData, onRestart }) {
           <PdfViewer file={pdfData} showLoadingSpinner={false} />
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center space-y-4 text-zinc-500">
-          <AlertCircle className="w-8 h-8" />
-          <p>We couldn&apos;t generate the PDF report.</p>
+        <div className="flex-1 flex flex-col items-center justify-center space-y-4 text-zinc-500 overflow-y-auto px-4 text-center">
+          <AlertCircle className="w-8 h-8 text-rose-500" />
+          <p className="font-semibold text-zinc-700">We couldn&apos;t generate the PDF report.</p>
+          {pdfError && (
+            <p className="text-xs text-rose-600/80 bg-rose-50 px-3 py-2 rounded-md font-mono break-words max-w-full">
+              {pdfError}
+            </p>
+          )}
         </div>
       )}
 
