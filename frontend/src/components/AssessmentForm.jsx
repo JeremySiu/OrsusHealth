@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import AssessmentReport from './AssessmentReport';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -172,7 +172,7 @@ function ChoiceCard({ title, hint, selected, onClick }) {
   );
 }
 
-function OptionCardGroup({ value, onChange, options, columns = 'sm:grid-cols-2', error }) {
+function OptionCardGroup({ value, onChange, options, columns = 'sm:grid-cols-2', error, onAfterChange }) {
   return (
     <div className="space-y-2">
       <div className={cn('grid grid-cols-1 gap-3', columns)}>
@@ -182,7 +182,10 @@ function OptionCardGroup({ value, onChange, options, columns = 'sm:grid-cols-2',
             title={opt.title}
             hint={opt.hint}
             selected={value === opt.value}
-            onClick={() => onChange(opt.value)}
+            onClick={() => {
+              onChange(opt.value);
+              if (onAfterChange) onAfterChange();
+            }}
           />
         ))}
       </div>
@@ -242,6 +245,7 @@ export default function AssessmentForm() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const scrollContainerRef = useRef(null);
 
   const {
     register,
@@ -268,6 +272,45 @@ export default function AssessmentForm() {
     },
     mode: 'onTouched',
   });
+
+  const scrollToFirstError = useCallback(() => {
+    setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const errorEl =
+        container.querySelector('[aria-invalid="true"]') ||
+        container.querySelector('.text-red-600');
+      if (errorEl) {
+        errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const firstField = container.querySelector('[data-field]');
+      if (firstField) {
+        firstField.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
+  }, []);
+
+  const scrollToNextField = useCallback((currentFieldName) => {
+    setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const allFields = Array.from(container.querySelectorAll('[data-field]'));
+      const currentIdx = allFields.findIndex((el) => el.dataset.field === currentFieldName);
+      const next = allFields[currentIdx + 1];
+      if (next) {
+        next.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }, []);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -318,7 +361,12 @@ export default function AssessmentForm() {
     const fieldsToValidate =
       step === 1 ? ['FullName', 'Age', 'Sex'] : step === 2 ? ['RestingBP', 'Cholesterol', 'MaxHR'] : [];
     const isValid = await trigger(fieldsToValidate);
-    if (isValid) setStep(step + 1);
+    if (isValid) {
+      setStep(step + 1);
+      scrollToTop();
+    } else {
+      scrollToFirstError();
+    }
   };
 
   const prevStep = () => setStep(step - 1);
@@ -361,15 +409,15 @@ export default function AssessmentForm() {
 
       <StepIndicator step={step} />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 flex min-h-0 flex-1 flex-col gap-0">
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-2" style={{ scrollbarWidth: 'thin' }}>
+      <form onSubmit={handleSubmit(onSubmit, () => scrollToFirstError())} className="mt-8 flex min-h-0 flex-1 flex-col gap-0">
+        <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto pr-1 pb-2" style={{ scrollbarWidth: 'thin' }}>
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-right-4 space-y-8 duration-500">
               <SectionCard
                 title="Patient details"
                 description="Legal name and age used for this assessment record."
               >
-                <div className="space-y-2" style={{ paddingTop: "0.5rem" }}>
+                <div className="space-y-2" style={{ paddingTop: "0.5rem" }} data-field="FullName">
                   <FieldLabel htmlFor="FullName" hint="Use the name you want shown on exported reports.">
                     Full name
                   </FieldLabel>
@@ -381,6 +429,7 @@ export default function AssessmentForm() {
                     aria-invalid={errors.FullName ? 'true' : undefined}
                     className={cn(inputClass, errors.FullName && 'border-red-400 focus-visible:ring-red-200')}
                     {...register('FullName')}
+                    onBlur={(e) => { register('FullName').onBlur(e); scrollToNextField('FullName'); }}
                     style={{ marginTop: "0.25rem", textIndent: "0.5rem"}}
                   />
                   {errors.FullName ? (
@@ -388,7 +437,7 @@ export default function AssessmentForm() {
                   ) : null}
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8" style={{ paddingTop: "0.5rem" }}>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8" style={{ paddingTop: "0.5rem" }} data-field="Age">
                   <div className="space-y-2">
                     <FieldLabel
                       htmlFor="Age"
@@ -404,6 +453,7 @@ export default function AssessmentForm() {
                       aria-invalid={errors.Age ? 'true' : undefined}
                       className={cn(inputClass, errors.Age && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('Age')}
+                      onBlur={(e) => { register('Age').onBlur(e); scrollToNextField('Age'); }}
                       style={{ marginTop: "0.25rem", textIndent: "0.5rem"}}
                     />
                     {errors.Age ? <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{errors.Age.message}</p> : null}
@@ -415,19 +465,22 @@ export default function AssessmentForm() {
                 title="Biological sex"
                 description="Used because reference ranges and risk patterns can differ by sex."
               >
-                <Controller
-                  name="Sex"
-                  control={control}
-                  render={({ field }) => (
-                    <OptionCardGroup
-                      value={field.value}
-                      onChange={field.onChange}
-                      options={SEX_OPTIONS}
-                      columns="sm:grid-cols-2"
-                      error={errors.Sex?.message}
-                    />
-                  )}
-                />
+                <div data-field="Sex">
+                  <Controller
+                    name="Sex"
+                    control={control}
+                    render={({ field }) => (
+                      <OptionCardGroup
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={SEX_OPTIONS}
+                        columns="sm:grid-cols-2"
+                        error={errors.Sex?.message}
+                        onAfterChange={() => scrollToNextField('Sex')}
+                      />
+                    )}
+                  />
+                </div>
               </SectionCard>
             </div>
           )}
@@ -439,7 +492,7 @@ export default function AssessmentForm() {
                 description="Resting measurements and lipids from your latest visit or home readings."
               >
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8" style={{ paddingTop: "0.5rem" }}>
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="RestingBP">
                     <FieldLabel
                       htmlFor="RestingBP"
                       hint="Systolic/diastolic-style single value here: enter typical resting BP in mm Hg (80–200)."
@@ -454,6 +507,7 @@ export default function AssessmentForm() {
                       aria-invalid={errors.RestingBP ? 'true' : undefined}
                       className={cn(inputClass, errors.RestingBP && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('RestingBP')}
+                      onBlur={(e) => { register('RestingBP').onBlur(e); scrollToNextField('RestingBP'); }}
                       style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
                     {errors.RestingBP ? (
@@ -461,7 +515,7 @@ export default function AssessmentForm() {
                     ) : null}
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-field="Cholesterol">
                     <FieldLabel
                       htmlFor="Cholesterol"
                       hint="Serum total cholesterol in mg/dl if that is what your lab reported."
@@ -476,6 +530,7 @@ export default function AssessmentForm() {
                       aria-invalid={errors.Cholesterol ? 'true' : undefined}
                       className={cn(inputClass, errors.Cholesterol && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('Cholesterol')}
+                      onBlur={(e) => { register('Cholesterol').onBlur(e); scrollToNextField('Cholesterol'); }}
                       style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
                     {errors.Cholesterol ? (
@@ -483,7 +538,7 @@ export default function AssessmentForm() {
                     ) : null}
                   </div>
 
-                  <div className="space-y-2 lg:col-span-2">
+                  <div className="space-y-2 lg:col-span-2" data-field="MaxHR">
                     <FieldLabel
                       htmlFor="MaxHR"
                       hint="Peak heart rate during stress test or highest reliable value (60–202 bpm per ACSM-style bounds)."
@@ -498,6 +553,7 @@ export default function AssessmentForm() {
                       aria-invalid={errors.MaxHR ? 'true' : undefined}
                       className={cn(inputClass, errors.MaxHR && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('MaxHR')}
+                      onBlur={(e) => { register('MaxHR').onBlur(e); scrollToNextField('MaxHR'); }}
                       style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
                     {errors.MaxHR ? <p className="text-xs text-red-600" style={{ marginTop: "0.25rem" }}>{errors.MaxHR.message}</p> : null}
@@ -509,18 +565,21 @@ export default function AssessmentForm() {
                 title="Fasting blood sugar"
                 description="Whether fasting glucose is above the common 120 mg/dl threshold."
               >
-                <Controller
-                  name="FastingBS"
-                  control={control}
-                  render={({ field }) => (
-                    <OptionCardGroup
-                      value={field.value}
-                      onChange={(v) => field.onChange(v)}
-                      options={FASTING_OPTIONS}
-                      columns="sm:grid-cols-2"
-                    />
-                  )}
-                />
+                <div data-field="FastingBS">
+                  <Controller
+                    name="FastingBS"
+                    control={control}
+                    render={({ field }) => (
+                      <OptionCardGroup
+                        value={field.value}
+                        onChange={(v) => field.onChange(v)}
+                        options={FASTING_OPTIONS}
+                        columns="sm:grid-cols-2"
+                        onAfterChange={() => scrollToNextField('FastingBS')}
+                      />
+                    )}
+                  />
+                </div>
               </SectionCard>
             </div>
           )}
@@ -532,7 +591,7 @@ export default function AssessmentForm() {
                 description="Patterns from history and the resting electrocardiogram."
               >
                 <div className="space-y-6">
-                  <div>
+                  <div data-field="ChestPainType">
                     <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Choose the category that best matches the patient’s reported pain.">
                         Chest pain type
@@ -548,12 +607,13 @@ export default function AssessmentForm() {
                           options={CHEST_PAIN_OPTIONS}
                           columns="sm:grid-cols-2"
                           error={errors.ChestPainType?.message}
+                          onAfterChange={() => scrollToNextField('ChestPainType')}
                         />
                       )}
                     />
                   </div>
 
-                  <div>
+                  <div data-field="RestingECG">
                     <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Resting ECG classification before exercise or pharmacologic stress.">
                         Resting ECG
@@ -569,6 +629,7 @@ export default function AssessmentForm() {
                           options={RESTING_ECG_OPTIONS}
                           columns="sm:grid-cols-2 lg:grid-cols-3"
                           error={errors.RestingECG?.message}
+                          onAfterChange={() => scrollToNextField('RestingECG')}
                         />
                       )}
                     />
@@ -581,7 +642,7 @@ export default function AssessmentForm() {
                 description="Stress-test style metrics: slope, depression, and exercise angina."
               >
                 <div className="space-y-6">
-                  <div>
+                  <div data-field="ST_Slope">
                     <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Slope of the ST segment at maximal exercise—often paired with Oldpeak.">
                         ST slope
@@ -597,12 +658,13 @@ export default function AssessmentForm() {
                           options={ST_SLOPE_OPTIONS}
                           columns="sm:grid-cols-3"
                           error={errors.ST_Slope?.message}
+                          onAfterChange={() => scrollToNextField('ST_Slope')}
                         />
                       )}
                     />
                   </div>
 
-                  <div className="space-y-2" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
+                  <div className="space-y-2" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}} data-field="Oldpeak">
                     <FieldLabel
                       htmlFor="Oldpeak"
                       hint="ST depression relative to rest (often in mm). Can be negative in some tracings; valid range here is −5 to 10."
@@ -618,6 +680,7 @@ export default function AssessmentForm() {
                       aria-invalid={errors.Oldpeak ? 'true' : undefined}
                       className={cn(inputClass, errors.Oldpeak && 'border-red-400 focus-visible:ring-red-200')}
                       {...register('Oldpeak')}
+                      onBlur={(e) => { register('Oldpeak').onBlur(e); scrollToNextField('Oldpeak'); }}
                       style={{ marginTop: "0.25rem", textIndent: "0.5rem" }}
                     />
                     {errors.Oldpeak ? (
@@ -625,7 +688,7 @@ export default function AssessmentForm() {
                     ) : null}
                   </div>
 
-                  <div>
+                  <div data-field="ExerciseAngina">
                     <div className="mb-3" style={{ paddingTop: "0.5rem", marginBottom: "0.25rem"}}>
                       <FieldLabel hint="Whether the patient reported angina during the exercise portion of testing.">
                         Exercise-induced angina
@@ -641,6 +704,7 @@ export default function AssessmentForm() {
                           options={EXERCISE_ANGINA_OPTIONS}
                           columns="sm:grid-cols-2"
                           error={errors.ExerciseAngina?.message}
+                          onAfterChange={() => scrollToNextField('ExerciseAngina')}
                         />
                       )}
                     />
