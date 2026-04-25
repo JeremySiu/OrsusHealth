@@ -110,7 +110,7 @@ export const handler = async (event) => {
         'Content-Disposition': 'attachment; filename="report.pdf"',
         ...CORS_HEADERS,
       },
-      body: pdf.toString('base64'),
+      body: Buffer.from(pdf).toString('base64'),
       isBase64Encoded: true,
     };
   } catch (err) {
