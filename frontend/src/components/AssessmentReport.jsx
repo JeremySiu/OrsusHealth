@@ -2,28 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { buildAssessmentReportHtml } from '../lib/buildAssessmentReportHtml';
-import { createReportSignedUrl, uploadReportPdf } from '../lib/reportStorage';
+import { uploadReportPdf } from '../lib/reportStorage';
+import PdfViewer from './PdfViewer';
 
 export default function AssessmentReport({ result, formData, onRestart }) {
-  const [pdfUrl, setPdfUrl] = useState(null);
-  const [storedPdfUrl, setStoredPdfUrl] = useState(null);
+  const [pdfData, setPdfData] = useState(null);
   const [generating, setGenerating] = useState(true);
   const { user } = useAuth();
 
   const isError = result.error !== undefined;
 
   useEffect(() => {
-    let revokedUrl = null;
-
     if (isError) {
       setGenerating(false);
       return undefined;
     }
 
     const depsHash = JSON.stringify({ result, formData });
-    if (window.__cachedPdfHash === depsHash && window.__cachedPdfUrl) {
-      setPdfUrl(window.__cachedPdfUrl);
-      setStoredPdfUrl(window.__cachedStoredPdfUrl || null);
+
+    // Session cache: reuse PDF data if same assessment
+    if (window.__cachedPdfHash === depsHash && window.__cachedPdfData) {
+      setPdfData(window.__cachedPdfData);
       setGenerating(false);
       return undefined;
     }
@@ -35,6 +34,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
           throw new Error('Missing VITE_GENERATE_PDF_URL');
         }
 
+        // 1. Build HTML and send to Lambda for PDF generation
         const htmlString = buildAssessmentReportHtml({ result, formData });
         const response = await fetch(generatePdfUrl, {
           method: 'POST',
@@ -57,33 +57,29 @@ export default function AssessmentReport({ result, formData, onRestart }) {
           throw new Error(detail);
         }
 
+        // 2. Get the PDF blob and convert to Uint8Array for react-pdf
         const blob = await response.blob();
-        const previewUrl = URL.createObjectURL(blob);
-        revokedUrl = previewUrl;
+        const arrayBuffer = await blob.arrayBuffer();
+        const pdfBytes = { data: new Uint8Array(arrayBuffer) };
 
+        // 3. Cache and display immediately
         window.__cachedPdfHash = depsHash;
-        window.__cachedPdfUrl = previewUrl;
+        window.__cachedPdfData = pdfBytes;
+        setPdfData(pdfBytes);
 
-        setPdfUrl(previewUrl);
-        setStoredPdfUrl(null);
-
-        if (user) {
-          try {
-            const { filePath } = await uploadReportPdf({
-              userId: user.id,
-              blob,
-              formData,
-              result,
-            });
-            const signedUrl = await createReportSignedUrl(filePath);
-            window.__cachedStoredPdfUrl = signedUrl;
-            setStoredPdfUrl(signedUrl);
-          } catch (saveErr) {
-            console.error('Supabase save error:', saveErr);
-          }
+        // 4. Upload to Supabase in background (for persistence)
+        try {
+          await uploadReportPdf({
+            userId: user.id,
+            blob,
+            formData,
+            result,
+          });
+        } catch (saveErr) {
+          console.error('Supabase save error:', saveErr);
         }
       } catch (err) {
-        console.error('PDF download error:', err);
+        console.error('PDF generation error:', err);
       } finally {
         setGenerating(false);
       }
@@ -91,11 +87,7 @@ export default function AssessmentReport({ result, formData, onRestart }) {
 
     generatePdf();
 
-    return () => {
-      if (revokedUrl && revokedUrl !== window.__cachedPdfUrl) {
-        URL.revokeObjectURL(revokedUrl);
-      }
-    };
+    return undefined;
   }, [isError, result, formData, user]);
 
   if (isError) {
@@ -123,22 +115,9 @@ export default function AssessmentReport({ result, formData, onRestart }) {
           <div className="w-12 h-12 border-4 border-zinc-200 border-t-teal-500 rounded-full animate-spin" />
           <p className="text-sm font-medium text-zinc-600">Generating Secure Clinical Report...</p>
         </div>
-      ) : pdfUrl ? (
+      ) : pdfData ? (
         <div className="flex-1 w-full h-full animate-in fade-in duration-700 flex flex-col bg-zinc-200 rounded-xl overflow-hidden shadow-inner border border-black/5">
-          <object data={pdfUrl} type="application/pdf" className="w-full h-full">
-            <div className="flex flex-col items-center justify-center h-full text-zinc-500 space-y-4">
-              <AlertCircle className="w-8 h-8" />
-              <p>Your browser does not support inline PDFs.</p>
-              <a
-                href={storedPdfUrl || pdfUrl}
-                download="Cardio_Assessment_Report.pdf"
-                className="bg-white text-zinc-900 px-4 py-2 rounded-lg shadow font-medium"
-                style={{ padding: '0.5rem' }}
-              >
-                Download PDF
-              </a>
-            </div>
-          </object>
+          <PdfViewer file={pdfData} showLoadingSpinner={false} />
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center space-y-4 text-zinc-500">
