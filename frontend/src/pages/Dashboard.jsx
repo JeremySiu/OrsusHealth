@@ -36,6 +36,31 @@ function looksLikeWav(bytes) {
   );
 }
 
+/**
+ * Strip common Markdown formatting and return plain text.
+ * Handles: headers, bold, italic, strikethrough, inline code,
+ * fenced code blocks, links/images, blockquotes, horizontal
+ * rules, ordered/unordered list markers, and extra blank lines.
+ */
+function stripMarkdown(text) {
+  if (!text) return text;
+  return text
+    .replace(/```[\s\S]*?```/g, '')           // fenced code blocks
+    .replace(/`([^`]+)`/g, '$1')               // inline code
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')  // images
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links
+    .replace(/^#{1,6}\s+/gm, '')               // headers
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')         // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2')            // italic
+    .replace(/~~(.*?)~~/g, '$1')                // strikethrough
+    .replace(/^>\s?/gm, '')                     // blockquotes
+    .replace(/^[-*+]\s+/gm, '')                 // unordered list markers
+    .replace(/^\d+\.\s+/gm, '')                // ordered list markers
+    .replace(/^(\s*[-*_]){3,}\s*$/gm, '')      // horizontal rules
+    .replace(/\n{3,}/g, '\n\n')                 // collapse excessive newlines
+    .trim();
+}
+
 function Dashboard() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -842,7 +867,7 @@ function Dashboard() {
                                       msg.role === 'user' ? 'bear-chat-bubble--user' : 'bear-chat-bubble--assistant'
                                     }`}
                                   >
-                                    {msg.content}
+                                    {msg.role === 'assistant' ? stripMarkdown(msg.content) : msg.content}
                                   </div>
                                 ))}
                                 </div>
