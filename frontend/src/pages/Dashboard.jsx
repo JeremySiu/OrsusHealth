@@ -21,6 +21,7 @@ const DASHBOARD_GRAIN = {
 
 // Tweak this variable to change the crossfade speed between the intro, idle, and talking animations
 const BEAR_MEDIA_TRANSITION = 'opacity 0.3s ease-in-out';
+const BEAR_CROSSFADE_MS = 350; // matches CSS transition duration + small buffer
 
 function looksLikeWav(bytes) {
   return (
@@ -97,6 +98,34 @@ function Dashboard() {
   const thinkingStartRef = useRef(null);
   const thinkingEndRef = useRef(null);
   ttsTextRef.current = ttsText;
+
+  // ── Bear phase state machine ─────────────────────────────────────────
+  // Only the *active* phase (+ the outgoing phase during crossfade) is in the DOM.
+  // Phases: 'intro' | 'idle' | 'talking' | 'thinking-start' | 'thinking-end'
+  const [bearPhase, setBearPhase] = useState('intro');
+  const [prevBearPhase, setPrevBearPhase] = useState(null);
+  const crossfadeTimerRef = useRef(null);
+
+  // Transition helper: sets new phase and keeps previous one mounted briefly for crossfade
+  const transitionBearPhase = useCallback((nextPhase) => {
+    setBearPhase((current) => {
+      if (current === nextPhase) return current;
+      // Clear any pending crossfade timer
+      if (crossfadeTimerRef.current) clearTimeout(crossfadeTimerRef.current);
+      // Keep the outgoing phase mounted for the crossfade duration
+      setPrevBearPhase(current);
+      crossfadeTimerRef.current = setTimeout(() => {
+        setPrevBearPhase(null);
+        crossfadeTimerRef.current = null;
+      }, BEAR_CROSSFADE_MS);
+      return nextPhase;
+    });
+  }, []);
+
+  // Clean up crossfade timer on unmount
+  useEffect(() => {
+    return () => { if (crossfadeTimerRef.current) clearTimeout(crossfadeTimerRef.current); };
+  }, []);
 
   /** One deliberate tap: browsers allow audio only from a user gesture; TTS returns async so we play on tap after the file is ready. */
   const [soundUnlocked, setSoundUnlocked] = useState(false);
@@ -314,7 +343,8 @@ function Dashboard() {
 
   const handleVideoEnd = useCallback(() => {
     setIntroFinished(true);
-  }, []);
+    transitionBearPhase('idle');
+  }, [transitionBearPhase]);
 
   // Auto-scroll chat to bottom when new messages arrive
   useEffect(() => {
@@ -344,6 +374,23 @@ function Dashboard() {
       vid.pause();
     }
   }, [isBearThinkingEnd]);
+
+  // ── Drive bearPhase from existing state booleans ─────────────────────
+  useEffect(() => {
+    if (!introFinished) {
+      // Stay on intro until it finishes (handled by handleVideoEnd)
+      return;
+    }
+    if (isBearThinking) {
+      transitionBearPhase('thinking-start');
+    } else if (isBearThinkingEnd) {
+      transitionBearPhase('thinking-end');
+    } else if (!speechEnded && speechAudioPlaying) {
+      transitionBearPhase('talking');
+    } else {
+      transitionBearPhase('idle');
+    }
+  }, [introFinished, isBearThinking, isBearThinkingEnd, speechEnded, speechAudioPlaying, transitionBearPhase]);
 
   const handleNewChat = useCallback(() => {
     setChatMessages([]);
@@ -469,6 +516,11 @@ function Dashboard() {
   const showIdleUnderBear =
     introFinished && (speechEnded || !speechAudioPlaying) && !isBearThinking && !isBearThinkingEnd;
   const showMustacheTalking = !speechEnded && speechAudioPlaying;
+
+  // Helper: is a given phase currently visible (active or fading out)?
+  const isPhaseVisible = (phase) => phase === bearPhase || phase === prevBearPhase;
+  // Is this phase the *active* (incoming) one? Used for opacity.
+  const isPhaseActive = (phase) => phase === bearPhase;
   const showMobileBearToggle = isMobile;
   const showContentPanel = soundUnlocked && (!isMobile || !showBearOnlyMobile);
   const contentPanelWidth = !soundUnlocked
@@ -711,119 +763,137 @@ function Dashboard() {
                             pointerEvents: isBearHiddenOnMobile ? 'none' : 'auto',
                           }}
                         >
-                          {/* Stacked layers: intro.webm on top until it ends; mustache only while TTS plays; idle after intro when not talking. */}
-                          <img
-                            key={speechEnded ? `idle-${talkCycle}` : 'idle-layer'}
-                            src="/idle.gif"
-                            alt="Dr. Bear"
-                            aria-hidden={!showIdleUnderBear}
-                            draggable={false}
-                            style={{
-                              height: '100%',
-                              width: 'auto',
-                              maxWidth: '100%',
-                              objectFit: 'contain',
-                              display: 'block',
-                              zIndex: 0,
-                              transition: BEAR_MEDIA_TRANSITION,
-                              opacity: showIdleUnderBear ? 1 : 0,
-                              pointerEvents: 'none',
-                            }}
-                          />
-                          <img
-                            ref={gifRef}
-                            key={`mustache-${talkCycle}`}
-                            src="/mustache.gif"
-                            alt="Dr. Bear"
-                            aria-hidden={!showMustacheTalking}
-                            draggable={false}
-                            style={{
-                              position: 'absolute',
-                              inset: 0,
-                              height: '100%',
-                              width: '100%',
-                              objectFit: 'contain',
-                              display: 'block',
-                              zIndex: 1,
-                              transition: BEAR_MEDIA_TRANSITION,
-                              opacity: showMustacheTalking ? 1 : 0,
-                              pointerEvents: 'none',
-                            }}
-                          />
-                          <video
-                            ref={videoRef}
-                            src="/intro.webm"
-                            autoPlay
-                            muted
-                            playsInline
-                            preload="auto"
-                            onEnded={handleVideoEnd}
-                            style={{
-                              position: 'absolute',
-                              inset: 0,
-                              height: '100%',
-                              width: '100%',
-                              objectFit: 'contain',
-                              display: 'block',
-                              zIndex: 2,
-                              transition: BEAR_MEDIA_TRANSITION,
-                              opacity: introFinished ? 0 : 1,
-                              pointerEvents: introFinished ? 'none' : 'auto',
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              outline: 'none',
-                            }}
-                          />
+                          {/* Only mount the active bear phase + the outgoing phase (during crossfade). */}
 
-                          {/* Thinking-start: loops while waiting for /chat response */}
-                          <video
-                            ref={thinkingStartRef}
-                            src="/thinking-start.webm"
-                            muted
-                            playsInline
-                            loop
-                            preload="auto"
-                            autoPlay={isBearThinking}
-                            onLoadedData={() => { if (isBearThinking) thinkingStartRef.current?.play?.().catch(() => {}); }}
-                            style={{
-                              position: 'absolute',
-                              inset: 0,
-                              height: '100%',
-                              width: '100%',
-                              objectFit: 'contain',
-                              display: 'block',
-                              zIndex: 3,
-                              transition: BEAR_MEDIA_TRANSITION,
-                              opacity: isBearThinking ? 1 : 0,
-                              pointerEvents: 'none',
-                              backgroundColor: 'transparent',
-                            }}
-                          />
+                          {/* IDLE — static flow element so it sizes the container */}
+                          {isPhaseVisible('idle') && (
+                            <img
+                              key={speechEnded ? `idle-${talkCycle}` : 'idle-layer'}
+                              src="/idle.gif"
+                              alt="Dr. Bear"
+                              draggable={false}
+                              style={{
+                                height: '100%',
+                                width: 'auto',
+                                maxWidth: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                                zIndex: 0,
+                                transition: BEAR_MEDIA_TRANSITION,
+                                opacity: isPhaseActive('idle') ? 1 : 0,
+                                pointerEvents: 'none',
+                              }}
+                            />
+                          )}
 
-                          {/* Thinking-end: plays once after response arrives, then back to idle */}
-                          <video
-                            ref={thinkingEndRef}
-                            src="/thinking-end.webm"
-                            muted
-                            playsInline
-                            preload="auto"
-                            autoPlay={isBearThinkingEnd}
-                            onLoadedData={() => { if (isBearThinkingEnd) thinkingEndRef.current?.play?.().catch(() => {}); }}
-                            onEnded={handleThinkingEndVideo}
-                            style={{
-                              position: 'absolute',
-                              inset: 0,
-                              height: '100%',
-                              width: '100%',
-                              objectFit: 'contain',
-                              display: 'block',
-                              zIndex: 4,
-                              transition: BEAR_MEDIA_TRANSITION,
-                              opacity: isBearThinkingEnd ? 1 : 0,
-                              pointerEvents: 'none',
-                              backgroundColor: 'transparent',
-                            }}
-                          />
+                          {/* TALKING (mustache GIF) */}
+                          {isPhaseVisible('talking') && (
+                            <img
+                              ref={gifRef}
+                              key={`mustache-${talkCycle}`}
+                              src="/mustache.gif"
+                              alt="Dr. Bear talking"
+                              draggable={false}
+                              style={{
+                                position: isPhaseActive('talking') && !isPhaseVisible('idle') ? 'relative' : 'absolute',
+                                inset: 0,
+                                height: '100%',
+                                width: isPhaseActive('talking') && !isPhaseVisible('idle') ? 'auto' : '100%',
+                                maxWidth: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                                zIndex: 1,
+                                transition: BEAR_MEDIA_TRANSITION,
+                                opacity: isPhaseActive('talking') ? 1 : 0,
+                                pointerEvents: 'none',
+                              }}
+                            />
+                          )}
+
+                          {/* INTRO video */}
+                          {isPhaseVisible('intro') && (
+                            <video
+                              ref={videoRef}
+                              src="/intro.webm"
+                              autoPlay
+                              muted
+                              playsInline
+                              preload="auto"
+                              onEnded={handleVideoEnd}
+                              style={{
+                                position: isPhaseActive('intro') && !isPhaseVisible('idle') && !isPhaseVisible('talking') ? 'relative' : 'absolute',
+                                inset: 0,
+                                height: '100%',
+                                width: isPhaseActive('intro') && !isPhaseVisible('idle') && !isPhaseVisible('talking') ? 'auto' : '100%',
+                                maxWidth: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                                zIndex: 2,
+                                transition: BEAR_MEDIA_TRANSITION,
+                                opacity: isPhaseActive('intro') ? 1 : 0,
+                                pointerEvents: isPhaseActive('intro') ? 'auto' : 'none',
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                outline: 'none',
+                              }}
+                            />
+                          )}
+
+                          {/* THINKING-START: loops while waiting for /chat response */}
+                          {isPhaseVisible('thinking-start') && (
+                            <video
+                              ref={thinkingStartRef}
+                              src="/thinking-start.webm"
+                              muted
+                              playsInline
+                              loop
+                              preload="auto"
+                              autoPlay
+                              onLoadedData={() => { thinkingStartRef.current?.play?.().catch(() => {}); }}
+                              style={{
+                                position: isPhaseActive('thinking-start') && !isPhaseVisible('idle') && !isPhaseVisible('talking') ? 'relative' : 'absolute',
+                                inset: 0,
+                                height: '100%',
+                                width: isPhaseActive('thinking-start') && !isPhaseVisible('idle') && !isPhaseVisible('talking') ? 'auto' : '100%',
+                                maxWidth: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                                zIndex: 3,
+                                transition: BEAR_MEDIA_TRANSITION,
+                                opacity: isPhaseActive('thinking-start') ? 1 : 0,
+                                pointerEvents: 'none',
+                                backgroundColor: 'transparent',
+                              }}
+                            />
+                          )}
+
+                          {/* THINKING-END: plays once after response arrives, then back to idle */}
+                          {isPhaseVisible('thinking-end') && (
+                            <video
+                              ref={thinkingEndRef}
+                              src="/thinking-end.webm"
+                              muted
+                              playsInline
+                              preload="auto"
+                              autoPlay
+                              onLoadedData={() => { thinkingEndRef.current?.play?.().catch(() => {}); }}
+                              onEnded={handleThinkingEndVideo}
+                              style={{
+                                position: isPhaseActive('thinking-end') && !isPhaseVisible('idle') && !isPhaseVisible('talking') ? 'relative' : 'absolute',
+                                inset: 0,
+                                height: '100%',
+                                width: isPhaseActive('thinking-end') && !isPhaseVisible('idle') && !isPhaseVisible('talking') ? 'auto' : '100%',
+                                maxWidth: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                                zIndex: 4,
+                                transition: BEAR_MEDIA_TRANSITION,
+                                opacity: isPhaseActive('thinking-end') ? 1 : 0,
+                                pointerEvents: 'none',
+                                backgroundColor: 'transparent',
+                              }}
+                            />
+                          )}
 
                           {/* DR BEAR CHAT PANEL — overlaid on stomach area */}
                           <div

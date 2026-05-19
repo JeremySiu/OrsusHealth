@@ -118,8 +118,13 @@ export default function AssessmentReport({ result, formData, onRestart }) {
           <p className="text-sm font-medium text-zinc-600">Generating Secure Clinical Report...</p>
         </div>
       ) : pdfData ? (
-        <div className="flex-1 w-full h-full animate-in fade-in duration-700 flex flex-col bg-zinc-200 rounded-xl overflow-hidden shadow-inner border border-black/5">
-          <PdfViewer file={pdfData} showLoadingSpinner={false} />
+        <div 
+          className="flex-1 w-full h-full animate-in fade-in duration-700 flex flex-col"
+          style={{ padding: '1rem' }}
+        >
+          <div className="w-full h-full bg-zinc-200 rounded-xl overflow-hidden shadow-inner border border-black/5">
+            <PdfViewer file={pdfData} showLoadingSpinner={false} />
+          </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center space-y-4 text-zinc-500 overflow-y-auto px-4 text-center">
