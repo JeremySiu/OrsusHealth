@@ -202,7 +202,7 @@ export function DashboardStats({ user }) {
         </div>
 
         {/* VITALS & CLINICAL SECTION */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))' }}>
           {/* Card 1: Vitals */}
           <Card className="bg-white/40 backdrop-blur-xl border-white/50 shadow-md" style={{ marginLeft: "0.5rem" }}>
             <CardHeader className="pb-3">
